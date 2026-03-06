@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Fluxo de Caixa 2026 · NIBO Live</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f172a;color:#f1f5f9;font-family:Inter,system-ui,sans-serif;padding:16px}
+button{cursor:pointer;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600}
+input,select{background:#1e293b;color:#f1f5f9;border:1px solid #334155;border-radius:8px;padding:7px 10px;font-size:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{padding:10px 12px;color:#64748b;font-weight:600;border-bottom:1px solid #334155;white-space:nowrap;font-size:11px}
+td{padding:8px 12px;white-space:nowrap}
+.card{background:#1e293b;border-radius:12px;padding:18px}
+.kpi{background:#1e293b;border-radius:12px;padding:14px 18px}
+.tag{border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:#1e293b}
+::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:700px){.grid4,.grid3,.grid5,.grid2{grid-template-columns:1fr}}
+
+/* SETUP */
+#setup-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:20px;padding:40px 20px;}
+.setup-box{width:100%;max-width:600px;background:#1e293b;border:1px solid #334155;border-radius:16px;padding:28px;}
+.setup-box h2{font-size:16px;font-weight:700;margin-bottom:6px;}
+.setup-box p{font-size:13px;color:#64748b;margin-bottom:18px;line-height:1.6;}
+.inp-row{display:flex;gap:10px;}
+.inp-row input{flex:1;font-family:monospace;}
+.btn-connect{background:#6366f1;color:#fff;padding:10px 20px;font-size:13px;}
+.btn-connect:hover{background:#4f46e5;}
+.info-tag{background:#0f172a;border:1px solid #6366f1;border-radius:6px;padding:2px 8px;font-family:monospace;font-size:11px;color:#818cf8;}
+.steps{margin-top:20px;display:flex;flex-direction:column;gap:10px;}
+.step{display:flex;gap:12px;font-size:13px;color:#64748b;line-height:1.6;}
+.step-n{width:22px;height:22px;min-width:22px;background:rgba(99,102,241,.2);border:1px solid #6366f1;border-radius:50%;color:#818cf8;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+.err-box{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:10px 14px;color:#ef4444;font-size:13px;display:none;margin-top:10px;}
+.auto-row{display:flex;align-items:center;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid #334155;font-size:13px;color:#64748b;}
+
+/* LOADING */
+#loading-screen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;}
+.spinner{width:36px;height:36px;border:3px solid #334155;border-top-color:#6366f1;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* TOPBAR */
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.live-badge{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:20px;padding:4px 12px;font-size:11px;color:#10b981;font-family:monospace;display:flex;align-items:center;gap:6px;}
+.live-dot{width:6px;height:6px;background:#10b981;border-radius:50%;animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+.upd-time{font-size:11px;color:#475569;font-family:monospace;}
+.cdwn{font-size:11px;color:#6366f1;font-family:monospace;}
+
+/* PROVISÃO BANNER */
+.prov-banner{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:10px 16px;font-size:12px;color:#f59e0b;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.prov-badge{background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);border-radius:6px;padding:2px 8px;font-size:11px;color:#fbbf24;font-weight:700;}
+</style>
+</head>
+<body>
+
+<!-- SETUP -->
+<div id="setup-screen">
+  <div style="font-family:monospace;font-size:12px;color:#475569;letter-spacing:2px">CASH<span style="color:#6366f1">FLOW</span> · NIBO · 2026</div>
+  <div style="font-size:28px;font-weight:700;text-align:center">Conecte sua planilha<br><span style="color:#6366f1">Google Sheets</span></div>
+  <div class="setup-box">
+    <h2>Link do Google Sheets</h2>
+    <p>Cole o link da planilha. O dashboard vai ler a aba <span class="info-tag">FLUXO DE CAIXA 2026</span> automaticamente — lançamentos realizados nas análises, provisões futuras separadas.</p>
+    <div class="inp-row">
+      <input id="url-inp" type="text" placeholder="https://docs.google.com/spreadsheets/d/..."/>
+      <button class="btn-connect" id="btn-con">Conectar</button>
+    </div>
+    <div class="err-box" id="err-box"></div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div>No Google Sheets: <strong style="color:#f1f5f9">Arquivo → Compartilhar → Publicar na web</strong> → clique Publicar</div></div>
+      <div class="step"><div class="step-n">2</div><div>Copie o link da barra do navegador e cole acima</div></div>
+      <div class="step"><div class="step-n">3</div><div>O link fica salvo — na próxima vez abre direto. Edite o Sheets normalmente e clique <strong style="color:#f1f5f9">🔄 Atualizar</strong></div></div>
+    </div>
+    <div class="auto-row">
+      Auto-atualizar a cada
+      <select id="sel-int" style="width:130px">
+        <option value="0">Desligado</option>
+        <option value="60" selected>1 minuto</option>
+        <option value="300">5 minutos</option>
+        <option value="600">10 minutos</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <div id="load-msg" style="font-size:13px;color:#64748b;font-family:monospace">Lendo planilha NIBO…</div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="app" style="display:none"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  GLOBALS
+// ══════════════════════════════════════════════════════════
+const fmt = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2}).format(v||0);
+const fmtK = v => Math.abs(v)>=1e6?'R$'+(v/1e6).toFixed(2)+'M':Math.abs(v)>=1e3?'R$'+(v/1e3).toFixed(0)+'K':'R$'+Number(v||0).toFixed(0);
+
+let TODOS = [];       // todos os lançamentos parseados
+let CONTAS = [];      // saldos das contas
+let sheetId = '';
+let autoTimer = null, cdTimer = null, cdSec = 0;
+let state = {tab:'comparativo', mes:'Janeiro', search:'', jobFilter:'TODOS', catFilter:'TODAS', expanded:null, statusMap:{}, showProv:false};
+
+const HOJE = new Date('2026-03-06');
+const MES_NOMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+// Restore
+const savedId = localStorage.getItem('nibo_id');
+const savedInt = localStorage.getItem('nibo_int');
+if (savedId) document.getElementById('url-inp').value = `https://docs.google.com/spreadsheets/d/${savedId}/edit`;
+if (savedInt) document.getElementById('sel-int').value = savedInt;
+
+// ══════════════════════════════════════════════════════════
+//  CONNECT / FETCH
+// ══════════════════════════════════════════════════════════
+document.getElementById('btn-con').addEventListener('click', connect);
+document.getElementById('url-inp').addEventListener('keydown', e => { if(e.key==='Enter') connect(); });
+
+function connect() {
+  const raw = document.getElementById('url-inp').value.trim();
+  const m = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]{20,})/);
+  if (!m) { showErr('Link inválido. Use o link da planilha Google Sheets.'); return; }
+  sheetId = m[1];
+  localStorage.setItem('nibo_id', sheetId);
+  localStorage.setItem('nibo_int', document.getElementById('sel-int').value);
+  hideErr();
+  fetchData();
+}
+
+async function fetchData() {
+  showLoading('Lendo aba FLUXO DE CAIXA 2026…');
+  try {
+    const rows = await fetchCSV(sheetId, 'FLUXO DE CAIXA 2026');
+    parseSheet(rows);
+    showDash();
+    startAuto();
+  } catch(e) {
+    hideLoading();
+    showErr('Erro: ' + e.message + '<br>Verifique se a planilha está publicada: Arquivo → Publicar na web.');
+  }
+}
+
+async function fetchCSV(id, sheetName) {
+  const sheetsUrl = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+
+  // Tenta direto primeiro (funciona quando hospedado no GitHub Pages / servidor)
+  // Depois tenta proxies CORS como fallback
+  const attempts = [
+    () => fetch(sheetsUrl),
+    () => fetch(`https://corsproxy.io/?${encodeURIComponent(sheetsUrl)}`),
+    () => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(sheetsUrl)}`),
+  ];
+
+  let lastErr;
+  for (const attempt of attempts) {
+    try {
+      const res = await attempt();
+      if (res.ok) return parseCSV(await res.text());
+    } catch(e) { lastErr = e; }
+  }
+  throw new Error(`Não foi possível carregar a aba "${sheetName}". Certifique-se que a planilha está publicada na web (Arquivo → Publicar na web).`);
+}
+
+// ══════════════════════════════════════════════════════════
+//  PARSE CSV
+//  Estrutura: linha 1 = cabeçalho (DATA,BANCO,FORN,DESC,DOC,CRED,DEB,SALDO)
+//  Linhas 2-6 = contas (col C=banco, F=ini, G=fim) — antes do cabeçalho
+//  No CSV exportado pelo Sheets, a linha 8 do xlsx vira linha 8 do CSV
+// ══════════════════════════════════════════════════════════
+function parseSheet(rows) {
+  CONTAS = [];
+  TODOS = [];
+
+  // Encontra linha de cabeçalho (contém "DATA" em alguma coluna)
+  let headerIdx = -1;
+  for (let i = 0; i < Math.min(rows.length, 15); i++) {
+    const vals = Object.values(rows[i]).map(v => String(v||'').toUpperCase());
+    if (vals.some(v => v === 'DATA' || v.trim() === 'DATA')) { headerIdx = i; break; }
+  }
+
+  // Extrai contas das linhas 1-5 (índice 0-4 no CSV)
+  for (let i = 0; i < Math.min(7, headerIdx > 0 ? headerIdx : 6); i++) {
+    const vals = Object.values(rows[i]);
+    const banco = String(vals[2] || '').trim();
+    const ini   = toNum(vals[5]);
+    const fim   = toNum(vals[6]);
+    if (banco && (banco.toUpperCase().includes('BANCO') || banco.toUpperCase().includes('CONTA') || banco.toUpperCase().includes('CARTÃO') || banco.toUpperCase().includes('CARTAO'))) {
+      if (!CONTAS.find(c => c.nome === banco)) CONTAS.push({ nome: banco, ini, fim });
+    }
+  }
+
+  // Lançamentos: a partir de headerIdx+2 (pula linha "Saldo anterior")
+  const dataStart = headerIdx >= 0 ? headerIdx + 2 : 9;
+  for (let i = dataStart; i < rows.length; i++) {
+    const vals = Object.values(rows[i]);
+    // Col: 0=vazio B=1 C=2 D=3 E=4 F=5 G=6 H=7 I=8
+    const dataRaw = vals[1];
+    const banco   = String(vals[2] || '').trim();
+    const forn    = String(vals[3] || '').trim();
+    const desc    = String(vals[4] || '').trim();
+    const doc     = String(vals[5] || '').trim();
+    const cred    = toNum(vals[6]);
+    const deb     = toNum(vals[7]);  // débitos vêm negativos da planilha
+
+    if (!dataRaw || (!cred && !deb)) continue;
+    const data = parseDate(dataRaw);
+    if (!data || desc === 'Saldo anterior') continue;
+
+    const dt    = new Date(data);
+    const isReal = dt <= HOJE;
+    const mesN  = MES_NOMES[dt.getMonth()];
+    const mesAno = mesN + '/' + dt.getFullYear();
+    const job   = getJob(desc);
+    const isRep = doc.toUpperCase().includes('REPASSE');
+    const isTrf = /TRANSFERENCIA DE MESMA TITULARIDADE/i.test(desc);
+
+    TODOS.push({
+      data, dt, banco, forn, desc, doc,
+      cred, deb,   // deb é negativo
+      mes: mesN, mesAno,
+      job, isRepasse: isRep, isTransf: isTrf,
+      isReal, isProv: !isReal,
+      cat: isRep ? 'Repasse de Clientes' : getCat(desc, doc, forn),
+      jobCat: job ? getJobCat(desc, forn) : null
+    });
+  }
+
+  // Garante que saldos das contas reflitam o mês atual se disponível
+  // (os saldos da planilha são sempre os mais recentes)
+}
+
+// ══════════════════════════════════════════════════════════
+//  CATEGORIZAÇÃO — idêntica ao dashboard original
+// ══════════════════════════════════════════════════════════
+function getJob(desc) {
+  const m = (desc||'').match(/JOB\s+(\d+)/i);
+  return m ? 'JOB ' + m[1] : null;
+}
+function getJobCat(desc, forn) {
+  const d = (desc||'').toUpperCase(), f = (forn||'').toUpperCase();
+  if (/ECAD|ESCRITORIO CENTRAL/.test(f)) return 'Taxas/ECAD';
+  if (/NIC\.BR|NIC .BR/.test(f)) return 'Taxas/ECAD';
+  if (/IMPOSTO|INSS|DARF|ISS|IOF/.test(d)) return 'Taxas/ECAD';
+  if (/ADVOCACIA|ADVOGADO|COBRA SOCIEDADE/.test(f)) return 'Jurídico';
+  if (/LOCALIZA|SHIFT MOBILIDADE|MOTOBOY|UBER|DAY OFF|VIAGEN|TRANSPORT|ECOVIAS|SPMAR|ESTAPAR|POSTO|AUTO POSTO/.test(f)) return 'Logística';
+  if (/LOGISTICA|LOGÍSTICA|AEREO|AÉREO/.test(d)) return 'Logística';
+  if (/ESTAMPARIA|IMPRESSOS|GRAFICA|GRÁFICA|SPEEDYGRAPH|BRINDE|KALUNGA|ASSB|FIT COMERCIO/.test(f)) return 'Material';
+  if (/VERBA PRODUÇÃO|VERBA PRODUCAO/.test(d)) return 'Produção';
+  if (/MODALE|KUBO|LIFE.*SAUDE|HGB CONNECT|TG4|NINE O CLOCK|RODRIGO MANTEGA|VAGNER|CAIKE|FRANCISCO EVALDO|BOURBON|GOBOS|MAXI AUDIO|LOCATRUSS|SKY ENERGIA|A GERADORA|MR DISTRIBUIDORA|BLOCKTIME/.test(f)) return 'Produção';
+  if (/BANDA EVA|EV9 APRESENT/.test(f)) return 'Cachê Artístico';
+  if (/99 TECNOLOGIA|RDSTATION/.test(f)) return 'Tecnologia';
+  return 'Outros';
+}
+const JCAT_COLORS = {"Produção":"#6366f1","Logística":"#3b82f6","Material":"#f59e0b","Taxas/ECAD":"#ef4444","Jurídico":"#8b5cf6","Cachê Artístico":"#ec4899","Tecnologia":"#14b8a6","Outros":"#64748b"};
+
+function getCat(desc, doc, forn) {
+  const d = (desc||'').toUpperCase();
+  if (/PRO LABORE/.test(d)) return 'Pro Labore';
+  if (/CACHÊ FIXO|CACHE FIXO|CACHÊ MÊS|CACHE MES/.test(d)) return 'Cachê Fixo';
+  if (/DISTR LUCROS|DISTRIBUIÇÃO DE LUCROS|DISTRIBUICAO/.test(d)) return 'Dist. Lucros';
+  if (/ANTEC DISTR/.test(d)) return 'Dist. Lucros';
+  if (/RESCISÃO|RESCISAO/.test(d)) return 'Rescisão';
+  if (/DESPESAS ADM/.test(d)) return 'Desp. ADM';
+  if (/DESPESAS ESTR/.test(d)) return 'Desp. Estrutura';
+  if (/DESPESAS CRIA/.test(d)) return 'Desp. Criação';
+  if (/DESPESAS DIR/.test(d)) return 'Desp. Diretoria';
+  if (/DESPESAS ATEND/.test(d)) return 'Desp. Atend.';
+  if (/DESPESAS PLAN/.test(d)) return 'Desp. Planej.';
+  if (/DESPESAS CONT/.test(d)) return 'Desp. Conteúdo';
+  if (/RENDTOS|RENDT APLIC/.test(d)) return 'Rendimento';
+  if (/EMPRESTIMO|EMPRÉSTIMO|APORTE/.test(d)) return 'Aporte/Empréstimo';
+  if (getJob(desc)) return getJobCat(desc, forn);
+  return 'Outros';
+}
+
+// ══════════════════════════════════════════════════════════
+//  SALDOS POR MÊS
+// ══════════════════════════════════════════════════════════
+function getSaldosDoMes(mesNome) {
+  // Tenta reconstruir saldo inicial e final do mês com base nos lançamentos reais
+  const rows = TODOS.filter(r => r.isReal && r.mes === mesNome && !r.isTransf);
+  // Pega saldo inicial a partir das contas (se for o mês mais recente) ou do fim do mês anterior
+  const mIdx = MES_NOMES.indexOf(mesNome);
+
+  // Soma saldo inicial das contas como base para Janeiro
+  let ini = 0, fim = 0;
+  if (mesNome === 'Janeiro') {
+    ini = CONTAS.reduce((s,c) => s + c.ini, 0);
+  } else {
+    // Saldo final do mês anterior
+    const prevMes = MES_NOMES[mIdx - 1];
+    const {fim: prevFim} = getSaldoSimples(prevMes);
+    ini = prevFim;
+  }
+  const credTotal = rows.reduce((s,r) => s + r.cred, 0);
+  const debTotal  = rows.reduce((s,r) => s + r.deb, 0);
+  fim = ini + credTotal + debTotal;
+
+  // Para contas individuais: usa os dados da planilha para o mês atual
+  let contasDoMes = CONTAS.map(c => ({...c}));
+  if (mesNome === 'Janeiro') {
+    contasDoMes = CONTAS.map(c => ({nome: c.nome, ini: c.ini, fim: c.ini}));
+  }
+  return {ini, fim, contasDoMes};
+}
+
+const _saldoCache = {};
+function getSaldoSimples(mesNome) {
+  if (_saldoCache[mesNome]) return _saldoCache[mesNome];
+  const mIdx = MES_NOMES.indexOf(mesNome);
+  let ini = CONTAS.reduce((s,c) => s + c.ini, 0);
+  for (let i = 0; i < mIdx; i++) {
+    const m = MES_NOMES[i];
+    const rows = TODOS.filter(r => r.isReal && r.mes === m && !r.isTransf);
+    ini += rows.reduce((s,r) => s + r.cred + r.deb, 0);
+  }
+  const rows = TODOS.filter(r => r.isReal && r.mes === mesNome && !r.isTransf);
+  const fim = ini + rows.reduce((s,r) => s + r.cred + r.deb, 0);
+  _saldoCache[mesNome] = {ini, fim};
+  return {ini, fim};
+}
+
+// ══════════════════════════════════════════════════════════
+//  CALC STATS — igual ao original
+// ══════════════════════════════════════════════════════════
+function calcStats(rows) {
+  const ops = rows.filter(r => !r.isTransf);
+  const cred = ops.reduce((s,r) => s + r.cred, 0);
+  const deb  = ops.reduce((s,r) => s - r.deb, 0); // deb é negativo, inverte p/ exibir positivo
+  const repDeb  = ops.filter(r => r.isRepasse).reduce((s,r) => s - r.deb, 0);
+  const repCred = ops.filter(r => r.isRepasse).reduce((s,r) => s + r.cred, 0);
+  return {
+    cred, deb,
+    resultado: cred - deb,
+    repDeb, repCred,
+    credOp: cred - repCred,
+    debOp:  deb  - repDeb,
+    resultadoOp: (cred - repCred) - (deb - repDeb)
+  };
+}
+
+// ══════════════════════════════════════════════════════════
+//  CHARTS SVG — idênticos ao original
+// ══════════════════════════════════════════════════════════
+function BarChartSVG({data, keys, colors, height=220}) {
+  const W=600,H=height,PL=60,PR=10,PT=10,PB=40;
+  const cW=W-PL-PR, cH=H-PT-PB;
+  const allVals = data.flatMap(d => keys.map(k => Math.abs(d[k]||0)));
+  const maxV = Math.max(...allVals, 1);
+  const bw = Math.floor(cW/data.length);
+  const bInner = Math.floor(bw*0.8/keys.length);
+  const ticks = 5;
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px">
+    ${Array.from({length:ticks+1},(_,i) => {
+      const v = maxV*(ticks-i)/ticks;
+      const y = PT+cH*i/ticks;
+      return `<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="#334155" stroke-dasharray="3"/>
+        <text x="${PL-4}" y="${y+4}" text-anchor="end" fill="#64748b" font-size="10">${fmtK(v)}</text>`;
+    }).join('')}
+    ${data.map((d,di) => {
+      const x0 = PL+di*bw+(bw-bInner*keys.length)/2;
+      return keys.map((k,ki) => {
+        const v = Math.abs(d[k]||0);
+        const bh = Math.max(1,(v/maxV)*cH);
+        const x = x0+ki*bInner;
+        const y = PT+cH-bh;
+        return `<rect x="${x}" y="${y}" width="${bInner-2}" height="${bh}" fill="${colors[ki]}" rx="3"/>`;
+      }).join('') +
+      `<text x="${PL+di*bw+bw/2}" y="${H-PB+14}" text-anchor="middle" fill="#64748b" font-size="10">${d.name}</text>`;
+    }).join('')}
+    ${keys.map((k,i) => `<rect x="${PL+i*90}" y="${H-12}" width="10" height="10" fill="${colors[i]}" rx="2"/>
+      <text x="${PL+i*90+14}" y="${H-4}" fill="#94a3b8" font-size="10">${k}</text>`).join('')}
+  </svg>`;
+}
+
+function AreaChartSVG({data, key, color, height=220}) {
+  if (!data.length) return '<div style="color:#475569;padding:40px;text-align:center">Sem dados</div>';
+  const W=600,H=height,PL=60,PR=10,PT=10,PB=40;
+  const cW=W-PL-PR, cH=H-PT-PB;
+  const vals = data.map(d => d[key]||0);
+  const minV = Math.min(...vals);
+  const maxV = Math.max(...vals, 1);
+  const range = maxV-minV || 1;
+  const px = i => PL+i*(cW/(data.length-1||1));
+  const py = v => PT+cH-(v-minV)/range*cH;
+  const pts = data.map((d,i) => `${px(i)},${py(d[key]||0)}`).join(' ');
+  const area = `M${px(0)},${py(vals[0])} ` + data.slice(1).map((d,i)=>`L${px(i+1)},${py(d[key]||0)}`).join(' ') + ` L${px(data.length-1)},${PT+cH} L${px(0)},${PT+cH} Z`;
+  const ticks = 5;
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px">
+    <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="${color}" stop-opacity="0.02"/>
+    </linearGradient></defs>
+    ${Array.from({length:ticks+1},(_,i) => {
+      const v = minV+range*(ticks-i)/ticks;
+      const y = PT+cH*i/ticks;
+      return `<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="#334155" stroke-dasharray="3"/>
+        <text x="${PL-4}" y="${y+4}" text-anchor="end" fill="#64748b" font-size="10">${fmtK(v)}</text>`;
+    }).join('')}
+    <path d="${area}" fill="url(#ag)"/>
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2"/>
+    ${data.filter((_,i) => i % Math.ceil(data.length/8) === 0).map(d => {
+      const i = data.indexOf(d);
+      return `<text x="${px(i)}" y="${H-PB+14}" text-anchor="middle" fill="#64748b" font-size="9">${d.d||d.name||''}</text>`;
+    }).join('')}
+  </svg>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  TAB HELPERS
+// ══════════════════════════════════════════════════════════
+function kpi(label, value, color, sub='') {
+  return `<div class="kpi" style="border-left:4px solid ${color}">
+    <div style="color:#94a3b8;font-size:11px;margin-bottom:3px">${label}</div>
+    <div style="color:#f1f5f9;font-size:18px;font-weight:700">${value}</div>
+    ${sub ? `<div style="color:${color};font-size:11px;margin-top:2px">${sub}</div>` : ''}
+  </div>`;
+}
+function tabBtn(id, label) {
+  const a = state.tab === id;
+  return `<button onclick="setState({tab:'${id}'})" style="background:${a?'#6366f1':'#1e293b'};color:${a?'#fff':'#94a3b8'}">${label}</button>`;
+}
+function rowColor(i) { return i%2===0 ? '#1e293b' : '#162032'; }
+
+// ══════════════════════════════════════════════════════════
+//  MESES DISPONÍVEIS
+// ══════════════════════════════════════════════════════════
+function getMesesReais() {
+  const s = new Set(TODOS.filter(r => r.isReal).map(r => r.mes));
+  return MES_NOMES.filter(m => s.has(m));
+}
+function getMesesProv() {
+  const s = new Set(TODOS.filter(r => r.isProv).map(r => r.mes));
+  return MES_NOMES.filter(m => s.has(m));
+}
+
+// ══════════════════════════════════════════════════════════
+//  RENDER: COMPARATIVO
+// ══════════════════════════════════════════════════════════
+function renderComparativo() {
+  const meses = getMesesReais();
+  if (meses.length < 2) {
+    return `<div class="card" style="text-align:center;color:#64748b;padding:40px">Aguardando dados de pelo menos 2 meses realizados.</div>`;
+  }
+  const stats = meses.map(m => {
+    const rows = TODOS.filter(r => r.isReal && r.mes === m);
+    const s = calcStats(rows);
+    const {ini, fim} = getSaldoSimples(m);
+    return {...s, mes:m, ini, fim};
+  });
+
+  const compData = meses.map((m,i) => ({name: m.substring(0,3), ...stats[i]}));
+  const saldoData = meses.map((m,i) => ({name: m.substring(0,3), Inicial: stats[i].ini, Final: stats[i].fim}));
+  const colors = ['#6366f1','#10b981','#f59e0b','#3b82f6','#ec4899','#14b8a6'];
+
+  const rows2 = [
+    {l:'Créditos Totais',        vals: stats.map(s=>s.cred)},
+    {l:'Débitos Totais',         vals: stats.map(s=>s.deb)},
+    {l:'Repasses a Fornecedores',vals: stats.map(s=>s.repDeb)},
+    {l:'Resultado Operacional',  vals: stats.map(s=>s.resultadoOp)},
+    {l:'Saldo Inicial',          vals: stats.map(s=>s.ini)},
+    {l:'Saldo Final',            vals: stats.map(s=>s.fim)},
+  ];
+
+  return `<div class="grid2">
+    <div class="card">
+      <div style="color:#94a3b8;font-size:13px;margin-bottom:12px">Créditos e Débitos por Mês</div>
+      ${BarChartSVG({data: meses.map((m,i)=>({name:m.substring(0,3), Créditos:stats[i].cred, Débitos:stats[i].deb})), keys:['Créditos','Débitos'], colors:['#10b981','#ef4444']})}
+    </div>
+    <div class="card">
+      <div style="color:#94a3b8;font-size:13px;margin-bottom:12px">Saldos por Mês</div>
+      ${BarChartSVG({data: saldoData, keys:['Inicial','Final'], colors:['#6366f1','#10b981']})}
+    </div>
+    <div class="card" style="grid-column:1/-1">
+      <div style="color:#94a3b8;font-size:13px;margin-bottom:12px">Resumo Comparativo</div>
+      <div style="overflow-x:auto"><table>
+        <thead><tr style="background:#0f172a">
+          <th>Indicador</th>
+          ${meses.map((m,i)=>`<th style="text-align:right;color:${colors[i]}">${m}</th>`).join('')}
+          ${meses.length>=2?`<th style="text-align:right">Variação (últ. 2)</th>`:''}
+        </tr></thead>
+        <tbody>${rows2.map((r,i)=>`<tr style="background:${rowColor(i)};border-bottom:1px solid #1a2744">
+          <td style="font-weight:600">${r.l}</td>
+          ${r.vals.map((v,j)=>`<td style="text-align:right;color:${colors[j]}">${fmt(v)}</td>`).join('')}
+          ${r.vals.length>=2?`<td style="text-align:right;color:${r.vals[r.vals.length-1]-r.vals[r.vals.length-2]>=0?'#10b981':'#ef4444'};font-weight:700">${(r.vals[r.vals.length-1]-r.vals[r.vals.length-2])>=0?'+':''}${fmt(r.vals[r.vals.length-1]-r.vals[r.vals.length-2])}</td>`:''}
+        </tr>`).join('')}</tbody>
+      </table></div>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  RENDER: FLUXO
+// ══════════════════════════════════════════════════════════
+function renderFluxo(rows, saldoIni, mes) {
+  let saldo = saldoIni;
+  const dm = {};
+  rows.filter(r => !r.isTransf).forEach(r => {
+    if (!dm[r.data]) dm[r.data] = {d: r.data.substring(5), cred:0, deb:0};
+    dm[r.data].cred += r.cred;
+    dm[r.data].deb  -= r.deb; // inverte para positivo
+  });
+  const daily = Object.values(dm).sort((a,b) => a.d.localeCompare(b.d)).map(r => {
+    saldo += r.cred - r.deb;
+    return {...r, saldo};
+  });
+  return `<div style="display:grid;gap:18px">
+    <div class="card"><div style="color:#94a3b8;font-size:13px;margin-bottom:12px">Evolução do Saldo — ${mes}</div>${AreaChartSVG({data:daily, key:'saldo', color:'#6366f1'})}</div>
+    <div class="card"><div style="color:#94a3b8;font-size:13px;margin-bottom:12px">Créditos vs Débitos por Dia — ${mes}</div>${BarChartSVG({data:daily, keys:['cred','deb'], colors:['#10b981','#ef4444'], height:200})}</div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  RENDER: P&L JOBS
+// ══════════════════════════════════════════════════════════
+function renderPLJobs() {
+  const m = {};
+  TODOS.filter(r => !r.isTransf && r.job && r.isReal).forEach(r => {
+    if (!m[r.job]) m[r.job] = {job:r.job, rows:[]};
+    m[r.job].rows.push(r);
+  });
+
+  const mesesReais = getMesesReais();
+
+  const jobs = Object.values(m).map(({job, rows}) => {
+    const credN  = rows.filter(r => !r.isRepasse).reduce((s,r) => s+r.cred, 0);
+    const repC   = rows.filter(r => r.isRepasse).reduce((s,r) => s+r.cred, 0);
+    const repD   = rows.filter(r => r.isRepasse).reduce((s,r) => s-r.deb, 0);
+    const debTot = rows.reduce((s,r) => s-r.deb, 0);
+    const receita = credN + repC;
+    const mb = receita > 0 ? ((receita-repD)/receita*100) : null;
+    // Imposto 16,77% sobre receita (mantém lógica do original)
+    const imposto = receita * 0.1677;
+    const margemLiq = receita > 0 ? ((receita-repD-imposto)/receita*100) : null;
+    const saldo = receita - debTot - imposto;
+
+    const byMes = {};
+    mesesReais.forEach(mn => {
+      const mr = rows.filter(r => r.mes === mn);
+      byMes[mn] = {
+        ent: mr.filter(r => !r.isRepasse).reduce((s,r) => s+r.cred, 0),
+        sai: mr.reduce((s,r) => s-r.deb, 0)
+      };
+    });
+
+    return {job, rows, receita, custoRep:repD, mb, margemLiq, saldo, imposto, byMes};
+  }).sort((a,b) => b.receita - a.receita);
+
+  const tR = jobs.reduce((s,j) => s+j.receita, 0);
+  const tC = jobs.reduce((s,j) => s+j.custoRep, 0);
+  const tS = jobs.reduce((s,j) => s+j.saldo, 0);
+  const mc = m => m===null?'#64748b':m>=30?'#10b981':m>=15?'#f59e0b':'#ef4444';
+
+  return `<div style="display:flex;flex-direction:column;gap:18px">
+    <div class="grid4">
+      ${kpi('Receita Total Jobs', fmtK(tR), '#10b981')}
+      ${kpi('Custo Repasses', fmtK(tC), '#ef4444')}
+      ${kpi('Margem Bruta', tR>0?((tR-tC)/tR*100).toFixed(1)+'%':'—', '#6366f1')}
+      ${kpi('Saldo Líquido Jobs', fmtK(tS), tS>=0?'#10b981':'#ef4444')}
+    </div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr style="background:#0f172a">
+        <th>Job</th><th style="text-align:right">Receita</th><th style="text-align:right">Custo Rep.</th><th style="text-align:right">Margem</th>
+        ${mesesReais.flatMap(m => [`<th style="text-align:right;color:#64748b;font-size:10px">Ent.${m.substring(0,3)}</th>`,`<th style="text-align:right;color:#64748b;font-size:10px">Saí.${m.substring(0,3)}</th>`]).join('')}
+        <th style="text-align:right">Saldo</th><th>Status</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${jobs.map((j,i) => {
+          const exp = state.expanded === j.job;
+          const st  = state.statusMap[j.job] || 'Em andamento';
+
+          const detailRows = exp ? [...j.rows].sort((a,b)=>a.data.localeCompare(b.data)).map((r,ri) => {
+            const jcat = (!r.isRepasse && r.deb < 0) ? r.jobCat : null;
+            const tipo = r.isRepasse
+              ? `<span class="tag" style="background:#1d4ed8;color:#93c5fd">Repasse</span>`
+              : r.cred>0
+                ? `<span class="tag" style="background:#064e3b;color:#10b981">Receita</span>`
+                : `<span style="color:#334155;font-size:10px">Custo</span>`;
+            return `<tr style="background:${ri%2===0?'#0f172a':'#111827'};border-bottom:1px solid #1a2744;font-size:11px">
+              <td style="color:#6366f1;font-weight:600;padding:5px 10px">${r.mes.substring(0,3)}</td>
+              <td style="color:#64748b;padding:5px 10px">${r.data.substring(5)}</td>
+              <td style="color:${r.banco==='ITAÚ'?'#f59e0b':'#3b82f6'};padding:5px 10px">${r.banco}</td>
+              <td style="padding:5px 10px">${jcat?`<span class="tag" style="background:#1e293b;color:${JCAT_COLORS[jcat]||'#64748b'};border:1px solid ${JCAT_COLORS[jcat]||'#64748b'}">${jcat}</span>`:'—'}</td>
+              <td style="color:#cbd5e1;padding:5px 10px;max-width:120px;overflow:hidden;text-overflow:ellipsis">${r.forn.substring(0,30)}</td>
+              <td style="color:#64748b;padding:5px 10px;max-width:160px;overflow:hidden;text-overflow:ellipsis">${r.desc}</td>
+              <td style="text-align:center;padding:5px 10px">${tipo}</td>
+              <td style="text-align:right;color:#10b981;padding:5px 10px">${r.cred>0?fmt(r.cred):''}</td>
+              <td style="text-align:right;color:#ef4444;padding:5px 10px">${r.deb<0?fmt(-r.deb):''}</td>
+            </tr>`;
+          }).join('') : '';
+
+          const detailSection = exp ? `<tr><td colspan="${4+mesesReais.length*2+3}" style="padding:0;background:#0f172a">
+            <div style="padding:12px 16px">
+              <div style="color:#94a3b8;font-size:12px;margin-bottom:8px;font-weight:600">Transações — ${j.job} <span style="color:#475569;font-weight:400">(${j.rows.length} lançamentos)</span></div>
+              <div style="background:#1a2744;border-left:3px solid #ef4444;border-radius:8px;padding:8px 14px;margin-bottom:10px;font-size:12px;display:flex;gap:24px;flex-wrap:wrap">
+                <span style="color:#94a3b8">⚠️ Imposto s/ faturamento <span style="color:#f59e0b;font-weight:700">(16,77%)</span>: <span style="color:#ef4444;font-weight:700">− ${fmt(j.imposto)}</span></span>
+                <span style="color:#94a3b8">Margem Líquida: <span style="color:${j.margemLiq>=0?'#10b981':'#ef4444'};font-weight:700">${j.margemLiq!==null?j.margemLiq.toFixed(1)+'%':'—'}</span></span>
+                <span style="color:#94a3b8">Saldo líquido após imposto: <span style="color:${j.saldo>=0?'#10b981':'#ef4444'};font-weight:700">${fmt(j.saldo)}</span></span>
+              </div>
+              <table style="font-size:11px">
+                <thead><tr>${['Mês','Data','Banco','Cat.','Fornecedor','Descrição','Tipo','Crédito','Débito'].map(h=>`<th style="padding:6px 10px;text-align:${['Crédito','Débito'].includes(h)?'right':'left'};color:#475569;border-bottom:1px solid #1e293b">${h}</th>`).join('')}</tr></thead>
+                <tbody>${detailRows}</tbody>
+                <tfoot><tr style="background:#1e293b;font-weight:700">
+                  <td colspan="7" style="padding:7px 10px;color:#f1f5f9">TOTAL</td>
+                  <td style="padding:7px 10px;text-align:right;color:#10b981">${fmt(j.rows.reduce((s,r)=>s+r.cred,0))}</td>
+                  <td style="padding:7px 10px;text-align:right;color:#ef4444">${fmt(j.rows.reduce((s,r)=>s-r.deb,0))}</td>
+                </tr></tfoot>
+              </table>
+            </div>
+          </td></tr>` : '';
+
+          return `<tr onclick="setState({expanded:${exp?'null':`'${j.job}'`}})" style="background:${exp?'#1a2744':rowColor(i)};border-bottom:1px solid #1a2744;cursor:pointer">
+            <td style="color:#6366f1;font-weight:700">${j.job}</td>
+            <td style="text-align:right;color:#10b981;font-weight:700">${fmt(j.receita)}</td>
+            <td style="text-align:right;color:#ef4444">${fmt(j.custoRep)}</td>
+            <td style="text-align:right;color:${mc(j.margemLiq!==null?j.margemLiq:j.mb)};font-weight:700">${j.margemLiq!==null?j.margemLiq.toFixed(1)+'% <span style="font-size:9px;color:#f59e0b">(líq.)</span>':j.mb!==null?j.mb.toFixed(1)+'%':'—'}</td>
+            ${mesesReais.flatMap(mn => [
+              `<td style="text-align:right;color:#a3e635;font-size:11px">${j.byMes[mn]?.ent>0?fmt(j.byMes[mn].ent):'—'}</td>`,
+              `<td style="text-align:right;color:#f87171;font-size:11px">${j.byMes[mn]?.sai>0?fmt(j.byMes[mn].sai):'—'}</td>`
+            ]).join('')}
+            <td style="text-align:right;color:${j.saldo>=0?'#10b981':'#ef4444'};font-weight:700">${fmt(j.saldo)}</td>
+            <td onclick="event.stopPropagation();toggleStatus('${j.job}')">
+              <span style="background:${st==='Fechado'?'#064e3b':'#1e3a5f'};color:${st==='Fechado'?'#10b981':'#60a5fa'};border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer">
+                ${st==='Fechado'?'✓ Fechado':'● Em andamento'}
+              </span>
+            </td>
+            <td style="color:#64748b;font-size:12px">${exp?'▲':'▼'}</td>
+          </tr>${detailSection}`;
+        }).join('')}
+      </tbody>
+      <tfoot><tr style="background:#0f172a;font-weight:700">
+        <td style="padding:11px 12px;color:#f1f5f9">TOTAL</td>
+        <td style="text-align:right;color:#10b981;padding:11px 12px">${fmt(tR)}</td>
+        <td style="text-align:right;color:#ef4444;padding:11px 12px">${fmt(tC)}</td>
+        <td colspan="${1+mesesReais.length*2}"></td>
+        <td style="text-align:right;color:${tS>=0?'#10b981':'#ef4444'};padding:11px 12px">${fmt(tS)}</td>
+        <td colspan="2"></td>
+      </tr></tfoot>
+    </table></div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  RENDER: POR JOB (resumo simples por mês selecionado)
+// ══════════════════════════════════════════════════════════
+function renderJobs(rows) {
+  const m = {};
+  rows.filter(r => !r.isTransf && r.job).forEach(r => {
+    if (!m[r.job]) m[r.job] = {job:r.job, cred:0, deb:0};
+    m[r.job].cred += r.cred;
+    m[r.job].deb  -= r.deb;
+  });
+  const jobs = Object.values(m).map(j => ({...j, res:j.cred-j.deb, margem:j.cred>0?((j.cred-j.deb)/j.cred*100).toFixed(1):'—'})).sort((a,b)=>b.cred-a.cred);
+  return `<div style="overflow-x:auto"><table>
+    <thead><tr style="background:#0f172a"><th>Job</th><th style="text-align:right">Receitas</th><th style="text-align:right">Despesas</th><th style="text-align:right">Resultado</th><th style="text-align:right">Margem</th></tr></thead>
+    <tbody>${jobs.map((j,i)=>`<tr style="background:${rowColor(i)};border-bottom:1px solid #1a2744">
+      <td style="color:#6366f1;font-weight:700">${j.job}</td>
+      <td style="text-align:right;color:#10b981">${fmt(j.cred)}</td>
+      <td style="text-align:right;color:#ef4444">${fmt(j.deb)}</td>
+      <td style="text-align:right;color:${j.res>=0?'#10b981':'#ef4444'};font-weight:700">${fmt(j.res)}</td>
+      <td style="text-align:right;color:${parseFloat(j.margem)>=30?'#10b981':parseFloat(j.margem)>=15?'#f59e0b':'#ef4444'};font-weight:700">${j.margem!=='—'?j.margem+'%':'—'}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  RENDER: CATEGORIAS
+// ══════════════════════════════════════════════════════════
+function renderCats(rows) {
+  const m = {};
+  rows.filter(r => !r.isTransf && r.deb < 0).forEach(r => { m[r.cat]=(m[r.cat]||0)+(-r.deb); });
+  const cats = Object.entries(m).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
+  const total = cats.reduce((s,c)=>s+c.value,0);
+  return `<div style="overflow-x:auto"><table>
+    <thead><tr style="background:#0f172a"><th>Categoria</th><th style="text-align:right">Total Débitos</th><th style="text-align:right">%</th></tr></thead>
+    <tbody>${cats.map((c,i)=>`<tr style="background:${rowColor(i)};border-bottom:1px solid #1a2744">
+      <td>${c.name}</td>
+      <td style="text-align:right;color:#ef4444">${fmt(c.value)}</td>
+      <td style="text-align:right;color:#94a3b8">${total>0?(c.value/total*100).toFixed(1)+'%':'—'}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  RENDER: REPASSES
+// ══════════════════════════════════════════════════════════
+function renderRepasses(rows, mes) {
+  const rep = rows.filter(r => r.isRepasse);
+  const totD = rep.reduce((s,r) => s + (-r.deb), 0);
+  const totC = rep.reduce((s,r) => s + r.cred, 0);
+  const byJob = {};
+  rep.forEach(r => {
+    const k = r.job || 'Sem Job';
+    if (!byJob[k]) byJob[k] = {job:k, cred:0, deb:0};
+    byJob[k].cred += r.cred;
+    byJob[k].deb  += (-r.deb);
+  });
+  const jl = Object.values(byJob).sort((a,b)=>b.deb-a.deb);
+  return `<div style="display:flex;flex-direction:column;gap:18px">
+    <div class="grid3">
+      ${kpi('Total Saído',fmt(totD),'#ef4444')}
+      ${kpi('Total Entrado',fmt(totC),'#10b981')}
+      ${kpi('Saldo Líquido',fmt(totC-totD),totC-totD>=0?'#6366f1':'#f59e0b')}
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <div style="color:#94a3b8;font-size:13px;margin-bottom:12px">Por Job — ${mes}</div>
+        <table><thead><tr style="background:#0f172a"><th>Job</th><th style="text-align:right">Entradas</th><th style="text-align:right">Saídas</th><th style="text-align:right">Líquido</th></tr></thead>
+        <tbody>${jl.map((j,i)=>`<tr style="background:${rowColor(i)};border-bottom:1px solid #1a2744">
+          <td style="color:#6366f1;font-weight:700">${j.job}</td>
+          <td style="text-align:right;color:#10b981">${j.cred>0?fmt(j.cred):'—'}</td>
+          <td style="text-align:right;color:#ef4444">${fmt(j.deb)}</td>
+          <td style="text-align:right;color:${j.cred-j.deb>=0?'#10b981':'#f59e0b'};font-weight:700">${fmt(j.cred-j.deb)}</td>
+        </tr>`).join('')}</tbody></table>
+      </div>
+      <div class="card" style="overflow-y:auto;max-height:450px">
+        <div style="color:#94a3b8;font-size:13px;margin-bottom:12px">Detalhe — ${mes}</div>
+        <table style="font-size:12px"><thead><tr style="background:#0f172a"><th>Data</th><th>Fornecedor</th><th style="text-align:right">Entrada</th><th style="text-align:right">Saída</th></tr></thead>
+        <tbody>${rep.map((r,i)=>`<tr style="background:${rowColor(i)};border-bottom:1px solid #1a2744">
+          <td style="color:#94a3b8">${r.data.substring(5)}</td>
+          <td style="color:#cbd5e1;max-width:160px;overflow:hidden;text-overflow:ellipsis">${r.forn.substring(0,30)}</td>
+          <td style="text-align:right;color:#10b981">${r.cred>0?fmt(r.cred):''}</td>
+          <td style="text-align:right;color:#ef4444">${r.deb<0?fmt(-r.deb):''}</td>
+        </tr>`).join('')}</tbody>
+        <tfoot><tr style="background:#0f172a;font-weight:700">
+          <td colspan="2" style="padding:9px 12px;color:#f1f5f9">TOTAL</td>
+          <td style="text-align:right;color:#10b981;padding:9px 12px">${fmt(totC)}</td>
+          <td style="text-align:right;color:#ef4444;padding:9px 12px">${fmt(totD)}</td>
+        </tr></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  RENDER: EXTRATO
+// ══════════════════════════════════════════════════════════
+function renderExtrato(rows) {
+  const jobsList  = [...new Set(rows.filter(r=>r.job).map(r=>r.job))].sort();
+  const catsList  = [...new Set(rows.map(r=>r.cat))].sort();
+  const filtered  = rows.filter(r => {
+    if (state.jobFilter!=='TODOS' && r.job!==state.jobFilter) return false;
+    if (state.catFilter!=='TODAS' && r.cat!==state.catFilter) return false;
+    if (state.search && !r.forn.toLowerCase().includes(state.search.toLowerCase()) && !r.desc.toLowerCase().includes(state.search.toLowerCase())) return false;
+    return true;
+  });
+  return `<div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <input value="${state.search}" oninput="setState({search:this.value})" placeholder="Buscar fornecedor ou descrição..." style="flex:1;min-width:200px"/>
+      <select onchange="setState({jobFilter:this.value})">
+        <option value="TODOS" ${state.jobFilter==='TODOS'?'selected':''}>Todos os Jobs</option>
+        ${jobsList.map(j=>`<option value="${j}" ${state.jobFilter===j?'selected':''}>${j}</option>`).join('')}
+      </select>
+      <select onchange="setState({catFilter:this.value})">
+        <option value="TODAS" ${state.catFilter==='TODAS'?'selected':''}>Todas as Categorias</option>
+        ${catsList.map(c=>`<option value="${c}" ${state.catFilter===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+    </div>
+    <div style="overflow-x:auto"><table style="font-size:12px">
+      <thead><tr style="background:#0f172a"><th>Data</th><th>Banco</th><th>Fornecedor</th><th>Descrição</th><th>Categoria</th><th>Job</th><th style="text-align:right">Crédito</th><th style="text-align:right">Débito</th></tr></thead>
+      <tbody>${filtered.map((r,i)=>`<tr style="background:${rowColor(i)};border-bottom:1px solid #1a2744">
+        <td style="color:#94a3b8">${r.data.substring(5)}</td>
+        <td style="color:${r.banco==='ITAÚ'?'#f59e0b':'#3b82f6'}">${r.banco}</td>
+        <td style="color:#cbd5e1;max-width:140px;overflow:hidden;text-overflow:ellipsis">${r.forn.substring(0,30)}</td>
+        <td style="color:#64748b;max-width:200px;overflow:hidden;text-overflow:ellipsis">${r.desc}</td>
+        <td style="color:#94a3b8">${r.cat}</td>
+        <td style="color:#6366f1">${r.job||'—'}</td>
+        <td style="text-align:right;color:#10b981">${r.cred>0?fmt(r.cred):''}</td>
+        <td style="text-align:right;color:#ef4444">${r.deb<0?fmt(-r.deb):''}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+    <div style="color:#64748b;font-size:11px">${filtered.length} lançamentos exibidos</div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  RENDER: PROVISÕES
+// ══════════════════════════════════════════════════════════
+function renderProvisoes() {
+  const provRows = TODOS.filter(r => r.isProv);
+  const mesesProv = getMesesProv();
+  const byMes = {};
+  provRows.forEach(r => {
+    if (!byMes[r.mes]) byMes[r.mes] = {cred:0, deb:0, rows:[]};
+    byMes[r.mes].cred += r.cred;
+    byMes[r.mes].deb  -= r.deb;
+    byMes[r.mes].rows.push(r);
+  });
+  const totDeb = provRows.reduce((s,r) => s-r.deb, 0);
+  const totCred = provRows.reduce((s,r) => s+r.cred, 0);
+
+  return `<div style="display:flex;flex-direction:column;gap:18px">
+    <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:12px 16px;font-size:13px;color:#f59e0b;line-height:1.6">
+      ⚠️ <strong>Provisões</strong> são lançamentos com data futura (após ${HOJE.toLocaleDateString('pt-BR')}) — planejados mas ainda não realizados. <strong>Não entram</strong> nas análises, gráficos ou KPIs.
+    </div>
+    <div class="grid3">
+      ${kpi('Créditos Previstos', fmt(totCred), '#10b981', provRows.filter(r=>r.cred>0).length+' lançamentos')}
+      ${kpi('Débitos Previstos',  fmt(totDeb),  '#ef4444', provRows.filter(r=>r.deb<0).length+' lançamentos')}
+      ${kpi('Resultado Previsto', fmt(totCred-totDeb), totCred-totDeb>=0?'#6366f1':'#f59e0b', 'Projetado')}
+    </div>
+    ${mesesProv.map(mes => {
+      const d = byMes[mes];
+      if (!d) return '';
+      return `<div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="color:#f59e0b;font-size:13px;font-weight:600">${mes} <span class="prov-badge">PROVISÃO</span></div>
+          <div style="display:flex;gap:16px;font-size:12px">
+            <span style="color:#10b981">↑ ${fmt(d.cred)}</span>
+            <span style="color:#ef4444">↓ ${fmt(d.deb)}</span>
+          </div>
+        </div>
+        <div style="overflow-x:auto;max-height:300px;overflow-y:auto"><table style="font-size:12px">
+          <thead><tr style="background:#0f172a"><th>Data</th><th>Banco</th><th>Fornecedor</th><th>Descrição</th><th>Job</th><th style="text-align:right">Crédito</th><th style="text-align:right">Débito</th></tr></thead>
+          <tbody>${d.rows.map((r,i)=>`<tr style="background:${rowColor(i)};border-bottom:1px solid #1a2744">
+            <td style="color:#f59e0b;font-family:monospace;font-size:11px">${r.data.substring(5)}</td>
+            <td style="color:${r.banco==='ITAÚ'?'#f59e0b':'#3b82f6'};font-size:11px">${r.banco}</td>
+            <td style="color:#64748b;max-width:120px;overflow:hidden;text-overflow:ellipsis">${r.forn.substring(0,30)}</td>
+            <td style="color:#94a3b8;max-width:200px;overflow:hidden;text-overflow:ellipsis">${r.desc}</td>
+            <td style="color:#6366f1;font-size:11px">${r.job||'—'}</td>
+            <td style="text-align:right;color:#10b981">${r.cred>0?fmt(r.cred):''}</td>
+            <td style="text-align:right;color:#ef4444">${r.deb<0?fmt(-r.deb):''}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  MAIN RENDER
+// ══════════════════════════════════════════════════════════
+function render() {
+  const mesesReais = getMesesReais();
+  const mes = state.mes;
+
+  // Garante que o mês selecionado existe
+  const mesAtivo = mesesReais.includes(mes) ? mes : (mesesReais[mesesReais.length-1] || 'Janeiro');
+  if (mesAtivo !== mes) { state.mes = mesAtivo; }
+
+  const rows = TODOS.filter(r => r.isReal && r.mes === mesAtivo);
+  const {ini: saldoIni, fim: saldoFim} = getSaldoSimples(mesAtivo);
+  const stats = calcStats(rows);
+  const nProv = TODOS.filter(r => r.isProv).length;
+
+  let tabContent = '';
+  if (state.tab==='comparativo') tabContent = renderComparativo();
+  else if (state.tab==='fluxo')  tabContent = renderFluxo(rows, saldoIni, mesAtivo);
+  else if (state.tab==='pljobs') tabContent = renderPLJobs();
+  else if (state.tab==='jobs')   tabContent = renderJobs(rows);
+  else if (state.tab==='categorias') tabContent = renderCats(rows);
+  else if (state.tab==='repasses')   tabContent = renderRepasses(rows, mesAtivo);
+  else if (state.tab==='extrato')    tabContent = renderExtrato(rows);
+  else if (state.tab==='provisoes')  tabContent = renderProvisoes();
+
+  document.getElementById('app').innerHTML = `
+    <div class="topbar">
+      <div>
+        <h1 style="font-size:20px;font-weight:700">📊 Fluxo de Caixa 2026 · NIBO</h1>
+        <p style="color:#64748b;font-size:12px;margin-top:3px">Itaú + Santander + XP · Fonte: Google Sheets</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="live-badge"><div class="live-dot"></div>Live</div>
+        <div class="upd-time" id="upd-time">—</div>
+        <div class="cdwn" id="cdwn-lbl"></div>
+        <button onclick="fetchData()" style="background:#1e293b;color:#94a3b8;font-size:12px">🔄 Atualizar</button>
+        <button onclick="resetDash()" style="background:#1e293b;color:#64748b;font-size:12px">✕ Trocar</button>
+      </div>
+    </div>
+
+    ${nProv > 0 ? `<div class="prov-banner">
+      <span>📅 Sua planilha tem <strong>${nProv} lançamentos futuros</strong> (provisões) — separados das análises</span>
+      <span class="prov-badge" style="cursor:pointer" onclick="setState({tab:'provisoes'})">Ver Provisões →</span>
+    </div>` : ''}
+
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      ${mesesReais.map(m => `<button onclick="setState({mes:'${m}'})" style="background:${mesAtivo===m?'#6366f1':'#1e293b'};color:${mesAtivo===m?'#fff':'#94a3b8'};font-size:14px;padding:8px 18px">${m}</button>`).join('')}
+    </div>
+
+    <div class="grid4" style="margin-bottom:8px">
+      ${kpi('Saldo Inicial', fmtK(saldoIni), '#64748b')}
+      ${kpi('Total Créditos', fmtK(stats.cred), '#10b981', 'Op.: '+fmtK(stats.credOp))}
+      ${kpi('Total Débitos', fmtK(stats.deb), '#ef4444', 'Repasse: '+fmtK(stats.repDeb))}
+      ${kpi('Saldo Final', fmtK(saldoFim), '#f59e0b')}
+    </div>
+    <div class="grid3" style="margin-bottom:14px">
+      ${kpi('Resultado Total', fmtK(stats.resultado), stats.resultado>=0?'#6366f1':'#ef4444', stats.resultado>=0?'▲ Positivo':'▼ Negativo')}
+      ${kpi('Resultado Operacional', fmtK(stats.resultadoOp), stats.resultadoOp>=0?'#10b981':'#ef4444', stats.resultadoOp>=0?'▲ Positivo':'▼ Negativo')}
+      ${kpi('Total Repassado', fmtK(stats.repDeb), '#f59e0b', 'Neutro — entra e sai')}
+    </div>
+    <div class="grid5" style="margin-bottom:16px">
+      ${CONTAS.map(c => `<div style="background:#1e293b;border-radius:10px;padding:10px 14px">
+        <div style="color:#64748b;font-size:10px">${c.nome}</div>
+        <div style="color:#f1f5f9;font-size:13px;font-weight:700">${fmtK(c.fim)}</div>
+        <div style="color:#475569;font-size:10px">Ini: ${fmtK(c.ini)}</div>
+      </div>`).join('')}
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      ${tabBtn('comparativo','📊 Comparativo')}
+      ${tabBtn('fluxo','📈 Fluxo')}
+      ${tabBtn('pljobs','📦 P&L Jobs')}
+      ${tabBtn('jobs','💼 Por Job')}
+      ${tabBtn('categorias','🗂 Categorias')}
+      ${tabBtn('repasses','🔁 Repasses')}
+      ${tabBtn('extrato','📋 Extrato')}
+      ${nProv>0?tabBtn('provisoes','📅 Provisões'):''}
+    </div>
+    ${tabContent}
+  `;
+
+  document.getElementById('upd-time').textContent = 'Atualizado: ' + new Date().toLocaleString('pt-BR');
+}
+
+function setState(patch) { state={...state,...patch}; render(); }
+function toggleStatus(job) {
+  const s = {...state.statusMap};
+  s[job] = s[job]==='Fechado' ? 'Em andamento' : 'Fechado';
+  setState({statusMap:s});
+}
+
+// ══════════════════════════════════════════════════════════
+//  AUTO REFRESH
+// ══════════════════════════════════════════════════════════
+function startAuto() {
+  clearInterval(autoTimer); clearInterval(cdTimer);
+  const sec = parseInt(localStorage.getItem('nibo_int')||'60');
+  if (!sec) return;
+  cdSec = sec;
+  cdTimer = setInterval(() => {
+    cdSec--;
+    const m = Math.floor(cdSec/60), s = cdSec%60;
+    const el = document.getElementById('cdwn-lbl');
+    if (el) el.textContent = `↻ em ${m>0?m+'m ':''}${s}s`;
+    if (cdSec <= 0) { fetchData(); cdSec = sec; }
+  }, 1000);
+}
+
+// ══════════════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════════════
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (!lines.length) return [];
+  const headers = splitLine(lines[0]).map(h => h.replace(/^"|"$/g,'').trim());
+  return lines.slice(1).map(line => {
+    const vals = splitLine(line).map(v => v.replace(/^"|"$/g,'').trim());
+    const obj = {};
+    headers.forEach((h,i) => { obj[h] = vals[i] ?? ''; });
+    return obj;
+  }).filter(r => Object.values(r).some(v => v !== ''));
+}
+function splitLine(line) {
+  const r=[]; let cur='', inQ=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(c==='"'){inQ=!inQ;cur+=c;}
+    else if(c===','&&!inQ){r.push(cur);cur='';}
+    else cur+=c;
+  }
+  r.push(cur); return r;
+}
+function toNum(v) {
+  if(v===''||v===null||v===undefined) return 0;
+  if(typeof v==='number') return v;
+  const s = String(v).replace(/\s/g,'').replace(/\./g,'').replace(',','.');
+  return parseFloat(s)||0;
+}
+function parseDate(v) {
+  if(!v) return null;
+  const s = String(v).trim();
+  if(s.match(/^\d{4}-\d{2}-\d{2}/)) return s.substring(0,10);
+  const m1 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m1) return `${m1[3]}-${m1[2].padStart(2,'0')}-${m1[1].padStart(2,'0')}`;
+  return null;
+}
+
+// UI
+function showLoading(msg) {
+  document.getElementById('setup-screen').style.display='none';
+  document.getElementById('app').style.display='none';
+  document.getElementById('loading-screen').style.display='flex';
+  document.getElementById('load-msg').textContent=msg;
+}
+function hideLoading() { document.getElementById('loading-screen').style.display='none'; }
+function showDash() {
+  hideLoading();
+  render();
+  document.getElementById('app').style.display='block';
+}
+function showErr(msg) {
+  const e=document.getElementById('err-box');
+  e.innerHTML=msg; e.style.display='block';
+  document.getElementById('setup-screen').style.display='flex';
+}
+function hideErr() { document.getElementById('err-box').style.display='none'; }
+function resetDash() {
+  clearInterval(autoTimer); clearInterval(cdTimer);
+  TODOS=[]; CONTAS=[];
+  document.getElementById('app').style.display='none';
+  document.getElementById('setup-screen').style.display='flex';
+}
+
+// Auto-connect se salvou sessão
+if (savedId) { sheetId=savedId; fetchData(); }
+</script>
+</body>
+</html>
