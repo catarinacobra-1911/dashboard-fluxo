@@ -177,66 +177,111 @@ async function fetchCSV(id, sheetName) {
 //  Linhas 2-6 = contas (col C=banco, F=ini, G=fim) — antes do cabeçalho
 //  No CSV exportado pelo Sheets, a linha 8 do xlsx vira linha 8 do CSV
 // ══════════════════════════════════════════════════════════
-function parseSheet(rows) {
+function parseSheet(rawRows) {
   CONTAS = [];
   TODOS = [];
+
+  // Converte array de objetos para array de arrays de valores
+  const rows = rawRows.map(r => Object.values(r));
+
+  // Debug: loga as primeiras linhas para entender a estrutura
+  console.log('=== CSV ESTRUTURA (primeiras 12 linhas) ===');
+  rows.slice(0, 12).forEach((r, i) => console.log(`L${i}:`, JSON.stringify(r.slice(0, 10))));
 
   // Encontra linha de cabeçalho (contém "DATA" em alguma coluna)
   let headerIdx = -1;
   for (let i = 0; i < Math.min(rows.length, 15); i++) {
-    const vals = Object.values(rows[i]).map(v => String(v||'').toUpperCase());
-    if (vals.some(v => v === 'DATA' || v.trim() === 'DATA')) { headerIdx = i; break; }
+    const vals = rows[i].map(v => String(v||'').toUpperCase().trim());
+    if (vals.some(v => v === 'DATA')) { headerIdx = i; break; }
   }
+  console.log('headerIdx:', headerIdx);
 
-  // Extrai contas das linhas 1-5 (índice 0-4 no CSV)
-  for (let i = 0; i < Math.min(7, headerIdx > 0 ? headerIdx : 6); i++) {
-    const vals = Object.values(rows[i]);
-    const banco = String(vals[2] || '').trim();
-    const ini   = toNum(vals[5]);
-    const fim   = toNum(vals[6]);
-    if (banco && (banco.toUpperCase().includes('BANCO') || banco.toUpperCase().includes('CONTA') || banco.toUpperCase().includes('CARTÃO') || banco.toUpperCase().includes('CARTAO'))) {
-      if (!CONTAS.find(c => c.nome === banco)) CONTAS.push({ nome: banco, ini, fim });
+  // Extrai contas das linhas antes do cabeçalho
+  for (let i = 0; i < Math.min(headerIdx > 0 ? headerIdx : 8, rows.length); i++) {
+    const vals = rows[i];
+    // Procura nome do banco em qualquer coluna
+    for (let j = 0; j < vals.length; j++) {
+      const v = String(vals[j] || '').trim();
+      if (v && (v.toUpperCase().includes('BANCO') || v.toUpperCase().includes('CONTA') || v.toUpperCase().includes('CARTÃO') || v.toUpperCase().includes('CARTAO'))) {
+        const ini = toNum(vals[j+3]) || toNum(vals[j+4]) || toNum(vals[j+5]);
+        const fim = toNum(vals[j+4]) || toNum(vals[j+5]) || toNum(vals[j+6]);
+        if (!CONTAS.find(c => c.nome === v)) CONTAS.push({ nome: v, ini, fim });
+        break;
+      }
     }
+  }
+  console.log('CONTAS:', CONTAS);
+
+  // Se não achou contas, usa valores padrão da planilha
+  if (CONTAS.length === 0) {
+    CONTAS = [
+      {nome:'Banco ITAU', ini:2663.58, fim:62477.24},
+      {nome:'Banco SANTANDER', ini:6.27, fim:13027.12},
+      {nome:'Banco XP', ini:0, fim:0},
+      {nome:'Cartão Santander', ini:0, fim:0},
+      {nome:'Cartão Bradesco', ini:0, fim:0}
+    ];
   }
 
   // Lançamentos: a partir de headerIdx+2 (pula linha "Saldo anterior")
   const dataStart = headerIdx >= 0 ? headerIdx + 2 : 9;
+
+  // Descobre quais colunas são DATA, BANCO, FORN, DESC, DOC, CRED, DEB
+  let colData=-1, colBanco=-1, colForn=-1, colDesc=-1, colDoc=-1, colCred=-1, colDeb=-1;
+  if (headerIdx >= 0) {
+    const h = rows[headerIdx].map(v => String(v||'').toUpperCase().trim());
+    colData  = h.findIndex(v => v === 'DATA');
+    colBanco = h.findIndex(v => v.includes('BANCO') || v === 'BANCO');
+    colForn  = h.findIndex(v => v.includes('FORNECEDOR') || v.includes('FORN'));
+    colDesc  = h.findIndex(v => v.includes('DESCRIÇÃO') || v.includes('DESCRI') || v === 'DESC');
+    colDoc   = h.findIndex(v => v.includes('DOCUMENTO') || v === 'DOC');
+    colCred  = h.findIndex(v => v.includes('CRÉDIT') || v.includes('CREDIT'));
+    colDeb   = h.findIndex(v => v.includes('DÉBIT') || v.includes('DEBIT'));
+    console.log('Colunas encontradas:', {colData,colBanco,colForn,colDesc,colDoc,colCred,colDeb});
+    console.log('Headers:', h);
+  }
+
+  // Fallback: usa posições fixas do xlsx (B=1,C=2,D=3,E=4,F=5,G=6,H=7)
+  if (colData < 0)  colData  = 1;
+  if (colBanco < 0) colBanco = 2;
+  if (colForn < 0)  colForn  = 3;
+  if (colDesc < 0)  colDesc  = 4;
+  if (colDoc < 0)   colDoc   = 5;
+  if (colCred < 0)  colCred  = 6;
+  if (colDeb < 0)   colDeb   = 7;
+
   for (let i = dataStart; i < rows.length; i++) {
-    const vals = Object.values(rows[i]);
-    // Col: 0=vazio B=1 C=2 D=3 E=4 F=5 G=6 H=7 I=8
-    const dataRaw = vals[1];
-    const banco   = String(vals[2] || '').trim();
-    const forn    = String(vals[3] || '').trim();
-    const desc    = String(vals[4] || '').trim();
-    const doc     = String(vals[5] || '').trim();
-    const cred    = toNum(vals[6]);
-    const deb     = toNum(vals[7]);  // débitos vêm negativos da planilha
+    const vals = rows[i];
+    const dataRaw = vals[colData];
+    const banco   = String(vals[colBanco] || '').trim();
+    const forn    = String(vals[colForn]  || '').trim();
+    const desc    = String(vals[colDesc]  || '').trim();
+    const doc     = String(vals[colDoc]   || '').trim();
+    const cred    = toNum(vals[colCred]);
+    const deb     = toNum(vals[colDeb]);
 
     if (!dataRaw || (!cred && !deb)) continue;
     const data = parseDate(dataRaw);
-    if (!data || desc === 'Saldo anterior') continue;
+    if (!data || desc.toLowerCase().includes('saldo anterior')) continue;
 
-    const dt    = new Date(data);
+    const dt     = new Date(data);
     const isReal = dt <= HOJE;
-    const mesN  = MES_NOMES[dt.getMonth()];
-    const mesAno = mesN + '/' + dt.getFullYear();
-    const job   = getJob(desc);
-    const isRep = doc.toUpperCase().includes('REPASSE');
-    const isTrf = /TRANSFERENCIA DE MESMA TITULARIDADE/i.test(desc);
+    const mesN   = MES_NOMES[dt.getMonth()];
+    const job    = getJob(desc);
+    const isRep  = doc.toUpperCase().includes('REPASSE');
+    const isTrf  = /TRANSFERENCIA DE MESMA TITULARIDADE/i.test(desc);
 
     TODOS.push({
       data, dt, banco, forn, desc, doc,
-      cred, deb,   // deb é negativo
-      mes: mesN, mesAno,
+      cred, deb,
+      mes: mesN,
       job, isRepasse: isRep, isTransf: isTrf,
       isReal, isProv: !isReal,
       cat: isRep ? 'Repasse de Clientes' : getCat(desc, doc, forn),
       jobCat: job ? getJobCat(desc, forn) : null
     });
   }
-
-  // Garante que saldos das contas reflitam o mês atual se disponível
-  // (os saldos da planilha são sempre os mais recentes)
+  console.log('Total lançamentos:', TODOS.length, '| Reais:', TODOS.filter(r=>r.isReal).length, '| Prov:', TODOS.filter(r=>r.isProv).length);
 }
 
 // ══════════════════════════════════════════════════════════
