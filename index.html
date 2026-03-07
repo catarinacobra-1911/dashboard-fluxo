@@ -214,6 +214,10 @@ function parseSheet(rawRows) {
     ];
   }
 
+  // Debug: mostra estrutura das linhas 8-12
+  console.log('=== LINHAS 8-12 ===');
+  for(let i=8;i<Math.min(13,rows.length);i++) console.log('L'+i+':', JSON.stringify(rows[i]));
+
   // Lança: percorre todas as linhas procurando datas válidas
   for (let i = 0; i < rows.length; i++) {
     const vals = rows[i];
@@ -1032,4 +1036,5 @@ if (savedId) { sheetId=savedId; fetchData(); }
 </script>
 </body>
 </html>
+
 
