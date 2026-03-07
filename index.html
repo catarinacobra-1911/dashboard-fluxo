@@ -181,38 +181,29 @@ function parseSheet(rawRows) {
   CONTAS = [];
   TODOS = [];
 
-  // Converte array de objetos para array de arrays de valores
+  // Converte para array de arrays
   const rows = rawRows.map(r => Object.values(r));
 
-  // Debug: loga as primeiras linhas para entender a estrutura
-  console.log('=== CSV ESTRUTURA (primeiras 12 linhas) ===');
-  rows.slice(0, 12).forEach((r, i) => console.log(`L${i}:`, JSON.stringify(r.slice(0, 10))));
+  // O CSV do Google Sheets exporta sem linha de cabeçalho no topo real
+  // Estrutura: col0=vazio, col1=DATA, col2=BANCO, col3=FORNECEDOR,
+  //            col4=DESCRIÇÃO, col5=DOCUMENTO, col6=CRÉDITOS, col7=DÉBITOS
+  // Contas ficam nas linhas 0-4 (col2=banco, col5=saldo_ini, col6=saldo_fim)
+  // Lançamentos começam na linha onde col1 tem uma data válida
 
-  // Encontra linha de cabeçalho (contém "DATA" em alguma coluna)
-  let headerIdx = -1;
-  for (let i = 0; i < Math.min(rows.length, 15); i++) {
-    const vals = rows[i].map(v => String(v||'').toUpperCase().trim());
-    if (vals.some(v => v === 'DATA')) { headerIdx = i; break; }
-  }
-  console.log('headerIdx:', headerIdx);
-
-  // Extrai contas das linhas antes do cabeçalho
-  for (let i = 0; i < Math.min(headerIdx > 0 ? headerIdx : 8, rows.length); i++) {
+  // Extrai contas (linhas 0 a 7)
+  for (let i = 0; i < Math.min(8, rows.length); i++) {
     const vals = rows[i];
-    // Procura nome do banco em qualquer coluna
-    for (let j = 0; j < vals.length; j++) {
-      const v = String(vals[j] || '').trim();
-      if (v && (v.toUpperCase().includes('BANCO') || v.toUpperCase().includes('CONTA') || v.toUpperCase().includes('CARTÃO') || v.toUpperCase().includes('CARTAO'))) {
-        const ini = toNum(vals[j+3]) || toNum(vals[j+4]) || toNum(vals[j+5]);
-        const fim = toNum(vals[j+4]) || toNum(vals[j+5]) || toNum(vals[j+6]);
-        if (!CONTAS.find(c => c.nome === v)) CONTAS.push({ nome: v, ini, fim });
-        break;
+    const banco = String(vals[2] || '').trim();
+    const ini   = toNum(vals[5]);
+    const fim   = toNum(vals[6]);
+    if (banco && /BANCO|CONTA|CARTÃO|CARTAO/i.test(banco)) {
+      if (!CONTAS.find(c => c.nome === banco)) {
+        CONTAS.push({ nome: banco, ini, fim });
       }
     }
   }
-  console.log('CONTAS:', CONTAS);
 
-  // Se não achou contas, usa valores padrão da planilha
+  // Fallback de contas se não encontrou
   if (CONTAS.length === 0) {
     CONTAS = [
       {nome:'Banco ITAU', ini:2663.58, fim:62477.24},
@@ -223,52 +214,29 @@ function parseSheet(rawRows) {
     ];
   }
 
-  // Lançamentos: a partir de headerIdx+2 (pula linha "Saldo anterior")
-  const dataStart = headerIdx >= 0 ? headerIdx + 2 : 9;
-
-  // Descobre quais colunas são DATA, BANCO, FORN, DESC, DOC, CRED, DEB
-  let colData=-1, colBanco=-1, colForn=-1, colDesc=-1, colDoc=-1, colCred=-1, colDeb=-1;
-  if (headerIdx >= 0) {
-    const h = rows[headerIdx].map(v => String(v||'').toUpperCase().trim());
-    colData  = h.findIndex(v => v === 'DATA');
-    colBanco = h.findIndex(v => v.includes('BANCO') || v === 'BANCO');
-    colForn  = h.findIndex(v => v.includes('FORNECEDOR') || v.includes('FORN'));
-    colDesc  = h.findIndex(v => v.includes('DESCRIÇÃO') || v.includes('DESCRI') || v === 'DESC');
-    colDoc   = h.findIndex(v => v.includes('DOCUMENTO') || v === 'DOC');
-    colCred  = h.findIndex(v => v.includes('CRÉDIT') || v.includes('CREDIT'));
-    colDeb   = h.findIndex(v => v.includes('DÉBIT') || v.includes('DEBIT'));
-    console.log('Colunas encontradas:', {colData,colBanco,colForn,colDesc,colDoc,colCred,colDeb});
-    console.log('Headers:', h);
-  }
-
-  // Fallback: usa posições fixas do xlsx (B=1,C=2,D=3,E=4,F=5,G=6,H=7)
-  if (colData < 0)  colData  = 1;
-  if (colBanco < 0) colBanco = 2;
-  if (colForn < 0)  colForn  = 3;
-  if (colDesc < 0)  colDesc  = 4;
-  if (colDoc < 0)   colDoc   = 5;
-  if (colCred < 0)  colCred  = 6;
-  if (colDeb < 0)   colDeb   = 7;
-
-  for (let i = dataStart; i < rows.length; i++) {
+  // Lança: percorre todas as linhas procurando datas válidas
+  for (let i = 0; i < rows.length; i++) {
     const vals = rows[i];
-    const dataRaw = vals[colData];
-    const banco   = String(vals[colBanco] || '').trim();
-    const forn    = String(vals[colForn]  || '').trim();
-    const desc    = String(vals[colDesc]  || '').trim();
-    const doc     = String(vals[colDoc]   || '').trim();
-    const cred    = toNum(vals[colCred]);
-    const deb     = toNum(vals[colDeb]);
+    const dataRaw = vals[1];
+    if (!dataRaw) continue;
+    const data = parseDate(String(dataRaw).trim());
+    if (!data) continue;
 
-    if (!dataRaw || (!cred && !deb)) continue;
-    const data = parseDate(dataRaw);
-    if (!data || desc.toLowerCase().includes('saldo anterior')) continue;
+    const banco = String(vals[2] || '').trim();
+    const forn  = String(vals[3] || '').trim();
+    const desc  = String(vals[4] || '').trim();
+    const doc   = String(vals[5] || '').trim();
+    const cred  = toNum(vals[6]);
+    const deb   = toNum(vals[7]);
+
+    if (!cred && !deb) continue;
+    if (/saldo anterior/i.test(desc)) continue;
 
     const dt     = new Date(data);
     const isReal = dt <= HOJE;
     const mesN   = MES_NOMES[dt.getMonth()];
     const job    = getJob(desc);
-    const isRep  = doc.toUpperCase().includes('REPASSE');
+    const isRep  = /REPASSE/i.test(doc);
     const isTrf  = /TRANSFERENCIA DE MESMA TITULARIDADE/i.test(desc);
 
     TODOS.push({
@@ -281,9 +249,8 @@ function parseSheet(rawRows) {
       jobCat: job ? getJobCat(desc, forn) : null
     });
   }
-  console.log('Total lançamentos:', TODOS.length, '| Reais:', TODOS.filter(r=>r.isReal).length, '| Prov:', TODOS.filter(r=>r.isProv).length);
+  console.log('Contas:', CONTAS.length, '| Lançamentos:', TODOS.length, '| Reais:', TODOS.filter(r=>r.isReal).length, '| Prov:', TODOS.filter(r=>r.isProv).length);
 }
-
 // ══════════════════════════════════════════════════════════
 //  CATEGORIZAÇÃO — idêntica ao dashboard original
 // ══════════════════════════════════════════════════════════
@@ -1025,8 +992,12 @@ function parseDate(v) {
   if(!v) return null;
   const s = String(v).trim();
   if(s.match(/^\d{4}-\d{2}-\d{2}/)) return s.substring(0,10);
+  // dd/mm/yyyy
   const m1 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if(m1) return `${m1[3]}-${m1[2].padStart(2,'0')}-${m1[1].padStart(2,'0')}`;
+  // dd/mm/yy (Google Sheets CSV exporta nesse formato)
+  const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+  if(m2) return `20${m2[3]}-${m2[2].padStart(2,'0')}-${m2[1].padStart(2,'0')}`;
   return null;
 }
 
@@ -1061,3 +1032,4 @@ if (savedId) { sheetId=savedId; fetchData(); }
 </script>
 </body>
 </html>
+
