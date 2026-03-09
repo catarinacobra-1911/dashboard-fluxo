@@ -998,19 +998,42 @@ function splitLine(line) {
 function toNum(v) {
   if(v===''||v===null||v===undefined) return 0;
   if(typeof v==='number') return v;
-  const s = String(v).replace(/\s/g,'').replace(/\./g,'').replace(',','.');
+  // Remove R$, espaços, e converte formato brasileiro (1.234,56 -> 1234.56)
+  let s = String(v).replace(/R\$\s*/g,'').replace(/\s/g,'').trim();
+  // Formato brasileiro: ponto como milhar, vírgula como decimal
+  if(s.match(/^-?[\d.]+,[\d]{2}$/)) {
+    s = s.replace(/\./g,'').replace(',','.');
+  } else {
+    s = s.replace(/[^\d.,-]/g,'').replace(',','.');
+  }
   return parseFloat(s)||0;
 }
 function parseDate(v) {
   if(!v) return null;
   const s = String(v).trim();
+  // yyyy-mm-dd
   if(s.match(/^\d{4}-\d{2}-\d{2}/)) return s.substring(0,10);
-  // dd/mm/yyyy
-  const m1 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if(m1) return `${m1[3]}-${m1[2].padStart(2,'0')}-${m1[1].padStart(2,'0')}`;
-  // dd/mm/yy (Google Sheets CSV exporta nesse formato)
+  
+  // Formato com 4 dígitos no ano: dd/mm/yyyy ou mm/dd/yyyy
+  const m4 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m4) {
+    const a=parseInt(m4[1]), b=parseInt(m4[2]), ano=m4[3];
+    // Se primeiro número > 12, é dia/mes/ano (brasileiro)
+    if(a > 12) return `${ano}-${m4[2].padStart(2,'0')}-${m4[1].padStart(2,'0')}`;
+    // Se segundo número > 12, é mes/dia/ano (americano)
+    if(b > 12) return `${ano}-${m4[1].padStart(2,'0')}-${m4[2].padStart(2,'0')}`;
+    // Ambos <= 12: assume brasileiro (dia/mes)
+    return `${ano}-${m4[2].padStart(2,'0')}-${m4[1].padStart(2,'0')}`;
+  }
+  
+  // Formato com 2 dígitos no ano: dd/mm/yy ou mm/dd/yy
   const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
-  if(m2) return `20${m2[3]}-${m2[2].padStart(2,'0')}-${m2[1].padStart(2,'0')}`;
+  if(m2) {
+    const a=parseInt(m2[1]), b=parseInt(m2[2]), ano='20'+m2[3];
+    if(a > 12) return `${ano}-${m2[2].padStart(2,'0')}-${m2[1].padStart(2,'0')}`;
+    if(b > 12) return `${ano}-${m2[1].padStart(2,'0')}-${m2[2].padStart(2,'0')}`;
+    return `${ano}-${m2[2].padStart(2,'0')}-${m2[1].padStart(2,'0')}`;
+  }
   return null;
 }
 
