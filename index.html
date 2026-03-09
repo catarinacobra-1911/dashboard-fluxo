@@ -57,37 +57,34 @@ td{padding:8px 12px;white-space:nowrap}
 .prov-banner{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:10px 16px;font-size:12px;color:#f59e0b;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
 .prov-badge{background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);border-radius:6px;padding:2px 8px;font-size:11px;color:#fbbf24;font-weight:700;}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
 <!-- SETUP -->
 <div id="setup-screen">
   <div style="font-family:monospace;font-size:12px;color:#475569;letter-spacing:2px">CASH<span style="color:#6366f1">FLOW</span> · NIBO · 2026</div>
-  <div style="font-size:28px;font-weight:700;text-align:center">Conecte sua planilha<br><span style="color:#6366f1">Google Sheets</span></div>
+  <div style="font-size:28px;font-weight:700;text-align:center">Carregue sua planilha<br><span style="color:#6366f1">Excel / NIBO</span></div>
   <div class="setup-box">
-    <h2>Link do Google Sheets</h2>
-    <p>Cole o link da planilha. O dashboard vai ler a aba <span class="info-tag">FLUXO DE CAIXA 2026</span> automaticamente — lançamentos realizados nas análises, provisões futuras separadas.</p>
-    <div class="inp-row">
-      <input id="url-inp" type="text" placeholder="https://docs.google.com/spreadsheets/d/..."/>
-      <button class="btn-connect" id="btn-con">Conectar</button>
+    <h2>📂 Selecione o arquivo Excel</h2>
+    <p>Selecione o arquivo <strong style="color:#f1f5f9">.xlsx</strong> exportado do NIBO. O dashboard lê a aba <span class="info-tag">FLUXO DE CAIXA 2026</span> automaticamente.</p>
+    <div style="margin:20px 0">
+      <label id="drop-zone" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border:2px dashed #6366f1;border-radius:16px;padding:40px;cursor:pointer;transition:all .2s">
+        <div style="font-size:48px">📊</div>
+        <div style="font-size:16px;font-weight:600;color:#6366f1">Clique para selecionar ou arraste o arquivo aqui</div>
+        <div style="font-size:12px;color:#64748b">Arquivo .xlsx do modelo NIBO</div>
+        <input id="file-inp" type="file" accept=".xlsx,.xls" style="display:none"/>
+      </label>
     </div>
     <div class="err-box" id="err-box"></div>
     <div class="steps">
-      <div class="step"><div class="step-n">1</div><div>No Google Sheets: <strong style="color:#f1f5f9">Arquivo → Compartilhar → Publicar na web</strong> → clique Publicar</div></div>
-      <div class="step"><div class="step-n">2</div><div>Copie o link da barra do navegador e cole acima</div></div>
-      <div class="step"><div class="step-n">3</div><div>O link fica salvo — na próxima vez abre direto. Edite o Sheets normalmente e clique <strong style="color:#f1f5f9">🔄 Atualizar</strong></div></div>
-    </div>
-    <div class="auto-row">
-      Auto-atualizar a cada
-      <select id="sel-int" style="width:130px">
-        <option value="0">Desligado</option>
-        <option value="60" selected>1 minuto</option>
-        <option value="300">5 minutos</option>
-        <option value="600">10 minutos</option>
-      </select>
+      <div class="step"><div class="step-n">1</div><div>Use o modelo Excel fornecido e preencha seus lançamentos</div></div>
+      <div class="step"><div class="step-n">2</div><div>Clique na área acima e selecione o arquivo <strong style="color:#f1f5f9">.xlsx</strong></div></div>
+      <div class="step"><div class="step-n">3</div><div>O dashboard carrega na hora! Para atualizar, clique <strong style="color:#f1f5f9">🔄 Atualizar</strong> e selecione o arquivo novamente</div></div>
     </div>
   </div>
 </div>
+<input id="sel-int" value="0" style="display:none"/>
 
 <!-- LOADING -->
 <div id="loading-screen">
@@ -115,60 +112,66 @@ const HOJE = new Date('2026-03-06');
 const MES_NOMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 // Restore
-const savedId = localStorage.getItem('nibo_id');
-const savedInt = localStorage.getItem('nibo_int');
-if (savedId) document.getElementById('url-inp').value = `https://docs.google.com/spreadsheets/d/${savedId}/edit`;
-if (savedInt) document.getElementById('sel-int').value = savedInt;
+// Upload mode - sem localStorage de ID
 
 // ══════════════════════════════════════════════════════════
 //  CONNECT / FETCH
 // ══════════════════════════════════════════════════════════
-document.getElementById('btn-con').addEventListener('click', connect);
-document.getElementById('url-inp').addEventListener('keydown', e => { if(e.key==='Enter') connect(); });
+// Upload de arquivo Excel
+let lastFileData = null;
 
-function connect() {
-  const raw = document.getElementById('url-inp').value.trim();
-  const m = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]{20,})/);
-  if (!m) { showErr('Link inválido. Use o link da planilha Google Sheets.'); return; }
-  sheetId = m[1];
-  localStorage.setItem('nibo_id', sheetId);
-  localStorage.setItem('nibo_int', document.getElementById('sel-int').value);
+document.getElementById('file-inp').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (file) loadFile(file);
+});
+
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.background='#1e3a5f'; });
+dropZone.addEventListener('dragleave', () => { dropZone.style.background=''; });
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.style.background='';
+  const file = e.dataTransfer.files[0];
+  if (file) loadFile(file);
+});
+
+function loadFile(file) {
   hideErr();
-  fetchData();
-}
-
-async function fetchData() {
-  showLoading('Lendo aba FLUXO DE CAIXA 2026…');
-  try {
-    const rows = await fetchCSV(sheetId, 'FLUXO DE CAIXA 2026');
-    parseSheet(rows);
-    showDash();
-    startAuto();
-  } catch(e) {
-    hideLoading();
-    showErr('Erro: ' + e.message + '<br>Verifique se a planilha está publicada: Arquivo → Publicar na web.');
-  }
-}
-
-async function fetchCSV(id, sheetName) {
-  const sheetsUrl = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
-
-  // Tenta direto primeiro (funciona quando hospedado no GitHub Pages / servidor)
-  // Depois tenta proxies CORS como fallback
-  const attempts = [
-    () => fetch(sheetsUrl),
-    () => fetch(`https://corsproxy.io/?${encodeURIComponent(sheetsUrl)}`),
-    () => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(sheetsUrl)}`),
-  ];
-
-  let lastErr;
-  for (const attempt of attempts) {
+  showLoading('Lendo arquivo ' + file.name + '…');
+  const reader = new FileReader();
+  reader.onload = function(e) {
     try {
-      const res = await attempt();
-      if (res.ok) return parseCSV(await res.text());
-    } catch(e) { lastErr = e; }
+      lastFileData = e.target.result;
+      const wb = XLSX.read(lastFileData, {type:'array', cellDates:true});
+      const sheetName = 'FLUXO DE CAIXA 2026';
+      if (!wb.SheetNames.includes(sheetName)) {
+        hideLoading();
+        showErr('Aba "FLUXO DE CAIXA 2026" não encontrada. Verifique o arquivo.');
+        return;
+      }
+      const ws = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, dateNF:'yyyy-mm-dd'});
+      parseSheetArray(rows);
+      showDash();
+    } catch(err) {
+      hideLoading();
+      showErr('Erro ao ler arquivo: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function connect() {}
+async function fetchData() {
+  if (lastFileData) {
+    try {
+      const wb = XLSX.read(lastFileData, {type:'array', cellDates:true});
+      const ws = wb.Sheets['FLUXO DE CAIXA 2026'];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, dateNF:'yyyy-mm-dd'});
+      parseSheetArray(rows);
+      showDash();
+    } catch(e) { showErr('Erro ao reler: ' + e.message); }
   }
-  throw new Error(`Não foi possível carregar a aba "${sheetName}". Certifique-se que a planilha está publicada na web (Arquivo → Publicar na web).`);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -177,6 +180,77 @@ async function fetchCSV(id, sheetName) {
 //  Linhas 2-6 = contas (col C=banco, F=ini, G=fim) — antes do cabeçalho
 //  No CSV exportado pelo Sheets, a linha 8 do xlsx vira linha 8 do CSV
 // ══════════════════════════════════════════════════════════
+function parseSheetArray(rows) {
+  CONTAS = [];
+  TODOS = [];
+
+  // rows é array de arrays direto do XLSX
+  // L0: título
+  // L1-5: [vazio, banco, vazio, vazio, saldo_ini, saldo_atual]
+  // L6: totais
+  // L7: cabeçalho
+  // L8: saldo anterior
+  // L9+: [data, banco, forn, desc, doc, cred, deb, saldo]
+
+  // Contas (linhas 1-5, índices 1-5)
+  for (let i = 1; i <= 5; i++) {
+    const vals = rows[i] || [];
+    const nome = String(vals[1]||'').trim();
+    if (!nome || nome === 'SALDO TOTAL') continue;
+    const ini = toNum(vals[4]);
+    const fim = toNum(vals[5]);
+    CONTAS.push({nome, ini, fim});
+  }
+
+  if (CONTAS.length === 0) {
+    CONTAS = [
+      {nome:'Banco ITAU', ini:2663.58, fim:62477.24},
+      {nome:'Banco SANTANDER', ini:6.27, fim:13027.12},
+      {nome:'Banco XP INVESTIMENTOS', ini:0, fim:0},
+      {nome:'Conta Cartão Santander', ini:0, fim:0},
+      {nome:'Conta Cartão Bradesco', ini:0, fim:0}
+    ];
+  }
+
+  // Lançamentos a partir da linha 9 (idx 9)
+  for (let i = 9; i < rows.length; i++) {
+    const vals = rows[i];
+    if (!vals || !vals[0]) continue;
+
+    const dataRaw = String(vals[0]).trim();
+    const data = parseDate(dataRaw);
+    if (!data) continue;
+
+    const banco = String(vals[1]||'').trim();
+    const forn  = String(vals[2]||'').trim();
+    const desc  = String(vals[3]||'').trim();
+    const doc   = String(vals[4]||'').trim();
+    const cred  = toNum(vals[5]);
+    const deb   = toNum(vals[6]);
+
+    if (!cred && !deb) continue;
+    if (/saldo anterior/i.test(desc)) continue;
+
+    const dt     = new Date(data);
+    const isReal = dt <= HOJE;
+    const mesN   = MES_NOMES[dt.getMonth()];
+    const job    = getJob(desc);
+    const isRep  = /REPASSE/i.test(doc);
+    const isTrf  = /TRANSFERENCIA DE MESMA TITULARIDADE/i.test(desc);
+
+    TODOS.push({
+      data, dt, banco, forn, desc, doc,
+      cred, deb,
+      mes: mesN,
+      job, isRepasse: isRep, isTransf: isTrf,
+      isReal, isProv: !isReal,
+      cat: isRep ? 'Repasse de Clientes' : getCat(desc, doc, forn),
+      jobCat: job ? getJobCat(desc, forn) : null
+    });
+  }
+  console.log('✅ Contas:', CONTAS.length, '| Lançamentos:', TODOS.length, '| Reais:', TODOS.filter(r=>r.isReal).length, '| Prov:', TODOS.filter(r=>r.isProv).length);
+}
+
 function parseSheet(rawRows) {
   CONTAS = [];
   TODOS = [];
@@ -878,7 +952,7 @@ function render() {
     <div class="topbar">
       <div>
         <h1 style="font-size:20px;font-weight:700">📊 Fluxo de Caixa 2026 · NIBO</h1>
-        <p style="color:#64748b;font-size:12px;margin-top:3px">Itaú + Santander + XP · Fonte: Google Sheets</p>
+        <p style="color:#64748b;font-size:12px;margin-top:3px">Itaú + Santander + XP · Fonte: Excel · NIBO</p>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div class="live-badge"><div class="live-dot"></div>Live</div>
