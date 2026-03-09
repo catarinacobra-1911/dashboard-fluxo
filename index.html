@@ -183,30 +183,23 @@ function parseSheet(rawRows) {
 
   const rows = rawRows.map(r => Object.values(r));
 
-  // Debug
-  console.log('=== LINHAS 8-12 ===');
-  for(let i=8;i<Math.min(13,rows.length);i++) console.log('L'+i+':', JSON.stringify(rows[i]));
+  // Estrutura confirmada do arquivo:
+  // L0: título
+  // L1-5: col1=banco, col4=saldo_ini, col5=saldo_atual
+  // L6: totais
+  // L7: cabeçalho (DATA, BANCO, FORNECEDOR, DESCRIÇÃO, DOCUMENTO, CRÉDITOS, DÉBITOS, SALDO)
+  // L8: saldo anterior
+  // L9+: lançamentos (col0=data, col1=banco, col2=forn, col3=desc, col4=doc, col5=cred, col6=deb)
 
-  // Extrai contas (linhas 0-6): procura células com "Banco" ou "Conta"
-  for (let i = 0; i < Math.min(7, rows.length); i++) {
-    const vals = rows[i];
-    for (let j = 0; j < vals.length; j++) {
-      const v = String(vals[j]||'').trim();
-      if (/^(Banco|Conta)/i.test(v)) {
-        // Pega os próximos valores numéricos
-        const nums = [];
-        for (let k = j+1; k < Math.min(j+8, vals.length); k++) {
-          const raw = String(vals[k]||'').trim();
-          if (!raw) continue;
-          const n = toNum(raw);
-          if (raw.match(/R\$|[0-9]/)) nums.push(n);
-          if (nums.length >= 2) break;
-        }
-        if (!CONTAS.find(c => c.nome === v))
-          CONTAS.push({nome:v, ini:nums[0]||0, fim:nums[1]||nums[0]||0});
-        break;
-      }
-    }
+  // Extrai contas (linhas 1-5)
+  for (let i = 1; i <= 5; i++) {
+    const vals = rows[i] || [];
+    // Banco está na col 1, saldo ini na col 4, saldo atual na col 5
+    const nome = String(vals[1]||'').trim();
+    if (!nome || nome === 'SALDO TOTAL') continue;
+    const ini = toNum(vals[4]);
+    const fim = toNum(vals[5]);
+    CONTAS.push({nome, ini, fim});
   }
 
   if (CONTAS.length === 0) {
@@ -219,28 +212,21 @@ function parseSheet(rawRows) {
     ];
   }
 
-  // Lançamentos: para cada linha, tenta encontrar uma data válida em qualquer coluna
-  // e então pega banco, forn, desc, doc, cred, deb nas colunas seguintes
-  for (let i = 8; i < rows.length; i++) {
+  // Lançamentos a partir da linha 9 (idx 8)
+  for (let i = 9; i < rows.length; i++) {
     const vals = rows[i];
-    
-    // Procura qual coluna tem uma data válida
-    let dataCol = -1, data = null;
-    for (let j = 0; j < Math.min(5, vals.length); j++) {
-      const raw = String(vals[j]||'').trim();
-      const d = parseDate(raw);
-      if (d) { dataCol = j; data = d; break; }
-    }
-    if (dataCol < 0 || !data) continue;
+    if (!vals || !vals[0]) continue;
 
-    // Com base em onde está a data, pega as outras colunas
-    // Estrutura esperada a partir da data: data, banco, fornecedor, desc, doc, cred, deb
-    const banco = String(vals[dataCol+1]||'').trim();
-    const forn  = String(vals[dataCol+2]||'').trim();
-    const desc  = String(vals[dataCol+3]||'').trim();
-    const doc   = String(vals[dataCol+4]||'').trim();
-    const cred  = toNum(vals[dataCol+5]);
-    const deb   = toNum(vals[dataCol+6]);
+    const dataRaw = String(vals[0]).trim();
+    const data = parseDate(dataRaw);
+    if (!data) continue;
+
+    const banco = String(vals[1]||'').trim();
+    const forn  = String(vals[2]||'').trim();
+    const desc  = String(vals[3]||'').trim();
+    const doc   = String(vals[4]||'').trim();
+    const cred  = toNum(vals[5]);
+    const deb   = toNum(vals[6]);
 
     if (!cred && !deb) continue;
     if (/saldo anterior/i.test(desc)) continue;
@@ -1011,29 +997,35 @@ function toNum(v) {
 function parseDate(v) {
   if(!v) return null;
   const s = String(v).trim();
-  // yyyy-mm-dd
-  if(s.match(/^\d{4}-\d{2}-\d{2}/)) return s.substring(0,10);
+  if(!s) return null;
   
-  // Formato com 4 dígitos no ano: dd/mm/yyyy ou mm/dd/yyyy
-  const m4 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if(m4) {
-    const a=parseInt(m4[1]), b=parseInt(m4[2]), ano=m4[3];
-    // Se primeiro número > 12, é dia/mes/ano (brasileiro)
-    if(a > 12) return `${ano}-${m4[2].padStart(2,'0')}-${m4[1].padStart(2,'0')}`;
-    // Se segundo número > 12, é mes/dia/ano (americano)
-    if(b > 12) return `${ano}-${m4[1].padStart(2,'0')}-${m4[2].padStart(2,'0')}`;
-    // Ambos <= 12: assume brasileiro (dia/mes)
-    return `${ano}-${m4[2].padStart(2,'0')}-${m4[1].padStart(2,'0')}`;
+  // yyyy-mm-dd ou yyyy-mm-dd HH:MM:SS (pandas/datetime)
+  const mISO = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(mISO) return `${mISO[1]}-${mISO[2]}-${mISO[3]}`;
+  
+  // dd/mm/yyyy
+  const mBR = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(mBR) {
+    const [,a,b,ano] = mBR;
+    // Se a>12 é dia/mes, se b>12 é mes/dia
+    if(parseInt(a)>12) return `${ano}-${b.padStart(2,'0')}-${a.padStart(2,'0')}`;
+    return `${ano}-${b.padStart(2,'0')}-${a.padStart(2,'0')}`;
   }
   
-  // Formato com 2 dígitos no ano: dd/mm/yy ou mm/dd/yy
-  const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
-  if(m2) {
-    const a=parseInt(m2[1]), b=parseInt(m2[2]), ano='20'+m2[3];
-    if(a > 12) return `${ano}-${m2[2].padStart(2,'0')}-${m2[1].padStart(2,'0')}`;
-    if(b > 12) return `${ano}-${m2[1].padStart(2,'0')}-${m2[2].padStart(2,'0')}`;
-    return `${ano}-${m2[2].padStart(2,'0')}-${m2[1].padStart(2,'0')}`;
+  // dd/mm/yy
+  const mBR2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+  if(mBR2) {
+    const [,a,b,yy] = mBR2;
+    const ano = '20'+yy;
+    if(parseInt(a)>12) return `${ano}-${b.padStart(2,'0')}-${a.padStart(2,'0')}`;
+    return `${ano}-${b.padStart(2,'0')}-${a.padStart(2,'0')}`;
   }
+  
+  // Tenta JS Date como fallback
+  try {
+    const d = new Date(s);
+    if(!isNaN(d)) return d.toISOString().substring(0,10);
+  } catch(e) {}
   return null;
 }
 
@@ -1068,4 +1060,3 @@ if (savedId) { sheetId=savedId; fetchData(); }
 </script>
 </body>
 </html>
-
