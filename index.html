@@ -181,57 +181,66 @@ function parseSheet(rawRows) {
   CONTAS = [];
   TODOS = [];
 
-  // Converte para array de arrays
   const rows = rawRows.map(r => Object.values(r));
 
-  // O CSV do Google Sheets exporta sem linha de cabeçalho no topo real
-  // Estrutura: col0=vazio, col1=DATA, col2=BANCO, col3=FORNECEDOR,
-  //            col4=DESCRIÇÃO, col5=DOCUMENTO, col6=CRÉDITOS, col7=DÉBITOS
-  // Contas ficam nas linhas 0-4 (col2=banco, col5=saldo_ini, col6=saldo_fim)
-  // Lançamentos começam na linha onde col1 tem uma data válida
+  // Debug
+  console.log('=== LINHAS 8-12 ===');
+  for(let i=8;i<Math.min(13,rows.length);i++) console.log('L'+i+':', JSON.stringify(rows[i]));
 
-  // Extrai contas (linhas 0 a 7)
-  for (let i = 0; i < Math.min(8, rows.length); i++) {
+  // Extrai contas (linhas 0-6): procura células com "Banco" ou "Conta"
+  for (let i = 0; i < Math.min(7, rows.length); i++) {
     const vals = rows[i];
-    const banco = String(vals[2] || '').trim();
-    const ini   = toNum(vals[5]);
-    const fim   = toNum(vals[6]);
-    if (banco && /BANCO|CONTA|CARTÃO|CARTAO/i.test(banco)) {
-      if (!CONTAS.find(c => c.nome === banco)) {
-        CONTAS.push({ nome: banco, ini, fim });
+    for (let j = 0; j < vals.length; j++) {
+      const v = String(vals[j]||'').trim();
+      if (/^(Banco|Conta)/i.test(v)) {
+        // Pega os próximos valores numéricos
+        const nums = [];
+        for (let k = j+1; k < Math.min(j+8, vals.length); k++) {
+          const raw = String(vals[k]||'').trim();
+          if (!raw) continue;
+          const n = toNum(raw);
+          if (raw.match(/R\$|[0-9]/)) nums.push(n);
+          if (nums.length >= 2) break;
+        }
+        if (!CONTAS.find(c => c.nome === v))
+          CONTAS.push({nome:v, ini:nums[0]||0, fim:nums[1]||nums[0]||0});
+        break;
       }
     }
   }
 
-  // Fallback de contas se não encontrou
   if (CONTAS.length === 0) {
     CONTAS = [
       {nome:'Banco ITAU', ini:2663.58, fim:62477.24},
       {nome:'Banco SANTANDER', ini:6.27, fim:13027.12},
-      {nome:'Banco XP', ini:0, fim:0},
-      {nome:'Cartão Santander', ini:0, fim:0},
-      {nome:'Cartão Bradesco', ini:0, fim:0}
+      {nome:'Banco XP INVESTIMENTOS', ini:0, fim:0},
+      {nome:'Conta Cartão Santander', ini:0, fim:0},
+      {nome:'Conta Cartão Bradesco', ini:0, fim:0}
     ];
   }
 
-  // Debug: mostra estrutura das linhas 8-12
-  console.log('=== LINHAS 8-12 ===');
-  for(let i=8;i<Math.min(13,rows.length);i++) console.log('L'+i+':', JSON.stringify(rows[i]));
-
-  // Lança: percorre todas as linhas procurando datas válidas
-  for (let i = 0; i < rows.length; i++) {
+  // Lançamentos: para cada linha, tenta encontrar uma data válida em qualquer coluna
+  // e então pega banco, forn, desc, doc, cred, deb nas colunas seguintes
+  for (let i = 8; i < rows.length; i++) {
     const vals = rows[i];
-    const dataRaw = vals[1];
-    if (!dataRaw) continue;
-    const data = parseDate(String(dataRaw).trim());
-    if (!data) continue;
+    
+    // Procura qual coluna tem uma data válida
+    let dataCol = -1, data = null;
+    for (let j = 0; j < Math.min(5, vals.length); j++) {
+      const raw = String(vals[j]||'').trim();
+      const d = parseDate(raw);
+      if (d) { dataCol = j; data = d; break; }
+    }
+    if (dataCol < 0 || !data) continue;
 
-    const banco = String(vals[2] || '').trim();
-    const forn  = String(vals[3] || '').trim();
-    const desc  = String(vals[4] || '').trim();
-    const doc   = String(vals[5] || '').trim();
-    const cred  = toNum(vals[6]);
-    const deb   = toNum(vals[7]);
+    // Com base em onde está a data, pega as outras colunas
+    // Estrutura esperada a partir da data: data, banco, fornecedor, desc, doc, cred, deb
+    const banco = String(vals[dataCol+1]||'').trim();
+    const forn  = String(vals[dataCol+2]||'').trim();
+    const desc  = String(vals[dataCol+3]||'').trim();
+    const doc   = String(vals[dataCol+4]||'').trim();
+    const cred  = toNum(vals[dataCol+5]);
+    const deb   = toNum(vals[dataCol+6]);
 
     if (!cred && !deb) continue;
     if (/saldo anterior/i.test(desc)) continue;
@@ -1036,5 +1045,4 @@ if (savedId) { sheetId=savedId; fetchData(); }
 </script>
 </body>
 </html>
-
 
